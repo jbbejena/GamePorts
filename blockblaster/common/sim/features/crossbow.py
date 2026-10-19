@@ -1,0 +1,310 @@
+"""Feature 27, the Crossbow: a target of its color that, shot down to 0, fires arrows that hit every cube in line.
+
+A crossbow is a hit target of its Material with its Health, standing on every cell of its square box, and no obstacle,
+so it hides what is behind it like a cube of another color (CrossbowFeature: IHitTarget, no IObstacle). At 0 it fires
+at once (OnHitTargetDamaged, RVA 0x56348E4, starts TriggerFireSequence), unless a booster is running: the sequence
+waits until the board isn't busy (boardBusyCondition, resources #9808), so a crossbow a booster kills fires right after
+that booster ends (<TriggerFireSequence>d__64$$MoveNext, RVA 0x563A074).
+
+It fires 1 arrow when its side is odd and 2 when it is even (GetArrowCount, RVA 0x5632778), from the line just outside
+its box in its Direction, on the middle line or the two middle lines (GetArrowStartPoints, RVA 0x5633A40). Each arrow's
+path is fixed when it fires (PixelGridController$$ScanDirectionalPixels, RVA 0x54BE4C8): from the start cell one cell
+at a time to the picture's edge it skips the crossbow's own cells, stops at the first cell with any feature on it or a
+big cube, and lists every other cube. The arrow flies from the start cell's middle to the stop cell's (or the last
+cell's) at 15 units a second (CrossbowArrowInstance #11514, Fire RVA 0x562FA40) and each listed cube still alive takes
+1 as the arrow passes it (CheckPixelProgress, RVA 0x562D4FC; CrossbowFeature$$DamagePixel, RVA 0x5638370). The arrow
+then shrinks away in 0.15 s (OnArrowReachedEnd, RVA 0x562D888); once every arrow is gone the crossbow leaves the
+picture at the next frame, and its controller waits a frame and until no shot and no other crossbow is in flight,
+then syncs the pigs with the picture, which trims the spare ammo the arrows left (CrossbowFeatureController
+OnCrossbowArrowsFinished RVA 0x563F880, WaitAndSync RVA 0x5641768, MapInputEvents$$TriggerSyncShootersAndPixels).
+
+The Super Shooter kills the crossbows of its color: the controller notes the color when the booster is about to fire
+(AddPendingMaterialsToFire, RVA 0x563D984) and, when a booster finishes (its outside trigger), gives every crossbow of
+a noted color with health left damage equal to that health (ExecutePendingMaterials, RVA 0x563E444).
+web/sim/features/crossbow.js mirrors this file.
+"""
+
+from __future__ import annotations
+
+import typing as t
+
+from .. import aim, base, checks, unicorn
+from .. import grid as gridx
+from ..mathx import idiv
+from ..numbers import ARROW_DAMAGE, ARROW_SPEED, ARROW_VANISH
+
+NUMBER = 27
+
+# A crossbow's life: standing, killed while a booster runs (waits for it to end), firing, gone from the picture
+STATES = ["standing", "armed", "firing", "gone"]
+
+# FacingDirection Left, Up, Right, Down and the step one cell that way (DirectionToStep, RVA 0x563266C)
+STEPS = [[-1, 0], [0, 1], [1, 0], [0, -1]]
+
+# Events that start a booster's work and the end of it
+BOOSTER_STARTS = ("bombed", "super_shot", "unicorn_start")
+
+
+def setup(state: base.State) -> None:
+    """Every crossbow as a record in file order, its target standing on its box's cells."""
+    listed = state.level.features.get("crossbows")
+    if not listed or not listed["Crossbows"]:
+        return
+    grid = state.grid
+    bows = []
+    for data in listed["Crossbows"]:
+        points = [[point["X"], point["Y"]] for point in data["GridPoints"]]
+        cells = [gridx.cell_of(grid, x, y) for x, y in points if 0 <= x < grid.width and 0 <= y < grid.height]
+        target = gridx.add(grid, gridx.make_target(NUMBER, data["Material"], data["Health"]), cells)
+        bows.append(
+            {
+                "target": target.id,
+                "points": points,
+                "side": data["Area"] + 2,
+                "direction": data["Direction"],
+                "state": "standing",
+                "fired": -1,
+                "arrows": [],
+            }
+        )
+    state.features[NUMBER] = {"bows": bows, "boosting": False, "pending": []}
+
+
+def bow_of(state: base.State, target: gridx.Target) -> int:
+    for index, bow in enumerate(state.features[NUMBER]["bows"]):
+        if bow["target"] == target.id:
+            return index
+    raise ValueError(f"target {target.id} is no crossbow")
+
+
+def on_hit(state: base.State, target: gridx.Target, damage: int, source: t.Any) -> None:
+    """Damage lands on a crossbow: at 0 it leaves the grid and fires, or waits for the running booster to end."""
+    target.health = max(0, target.health - damage)
+    cell = -1 if source is None else source.cell
+    base.emit(state, "hit", {"target": target.id, "cell": cell, "health": target.health})
+    if target.health > 0:
+        return
+    target.dead = True
+    gridx.remove(state.grid, target)
+    base.emit(state, "target_died", {"target": target.id, "owner": NUMBER})
+    checks.request_win_check(state)
+    index = bow_of(state, target)
+    if state.features[NUMBER]["boosting"]:
+        state.features[NUMBER]["bows"][index]["state"] = "armed"
+        return
+    fire(state, index)
+
+
+def round_half_even(twice: int) -> int:
+    """Mathf.RoundToInt of twice / 2."""
+    low = idiv(twice, 2)
+    if twice % 2 == 0 or low % 2 == 0:
+        return low
+    return low + 1
+
+
+def start_points(bow: dict) -> list[list[int]]:
+    """Where the arrows start: the line just outside the box in its direction, on the middle line for an odd side or
+    the two middle lines (lower first) for an even one."""
+    xs = [x for x, _ in bow["points"]]
+    ys = [y for _, y in bow["points"]]
+    direction = bow["direction"]
+    if direction in (0, 2):
+        fixed = min(xs) - 1 if direction == 0 else max(xs) + 1
+        twice = min(ys) + max(ys)
+    else:
+        fixed = max(ys) + 1 if direction == 1 else min(ys) - 1
+        twice = min(xs) + max(xs)
+    if bow["side"] % 2 == 1:
+        across = [round_half_even(twice)]
+    else:
+        across = [idiv(twice, 2), -idiv(-twice, 2)]
+    if direction in (0, 2):
+        return [[fixed, line] for line in across]
+    return [[line, fixed] for line in across]
+
+
+def feature_on(state: base.State, cell: int) -> bool:
+    """A feature stands on the cell: any feature target, or a crossbow still in the picture after it fired."""
+    if any(target.owner != 0 for target in gridx.at(state.grid, cell)):
+        return True
+    for bow in state.features[NUMBER]["bows"]:
+        if bow["state"] in ("armed", "firing") and cell in bow_cells(state, bow):
+            return True
+    return False
+
+
+def bow_cells(state: base.State, bow: dict) -> list[int]:
+    grid = state.grid
+    return [gridx.cell_of(grid, x, y) for x, y in bow["points"] if 0 <= x < grid.width and 0 <= y < grid.height]
+
+
+def living_cube(state: base.State, cell: int) -> gridx.Target | None:
+    for target in gridx.at(state.grid, cell):
+        if target.owner == 0 and not target.dead:
+            return target
+    return None
+
+
+def scan(state: base.State, bow: dict, start: list[int], step: list[int]) -> tuple[list[list[int]], int, bool]:
+    """One arrow's path: [cube id, cells from the start] for every cube it will hit, how many cells from the start
+    its flight ends (-1 when it starts off the picture), and whether a feature or a big cube stopped it."""
+    grid = state.grid
+    own = bow_cells(state, bow)
+    x, y = start
+    steps = 0
+    cubes: list[list[int]] = []
+    while 0 <= x < grid.width and 0 <= y < grid.height:
+        cell = gridx.cell_of(grid, x, y)
+        if cell not in own:
+            if feature_on(state, cell):
+                return cubes, steps, True
+            cube = living_cube(state, cell)
+            if cube is not None and len(cube.cells) > 1:
+                return cubes, steps, True
+            if cube is not None:
+                cubes.append([cube.id, steps])
+        x += step[0]
+        y += step[1]
+        steps += 1
+    return cubes, steps - 1, False
+
+
+def reach_tick(state: base.State, distance: int) -> int:
+    """The tick the arrow, moving ARROW_SPEED a tick from this tick on, has flown `distance` L."""
+    return state.tick + max(1, -idiv(-distance, ARROW_SPEED)) - 1
+
+
+def fire(state: base.State, index: int) -> None:
+    """The crossbow fires: every arrow's path is fixed now, with the tick each listed cube is hit and the tick the
+    arrow's flight ends."""
+    bow = state.features[NUMBER]["bows"][index]
+    bow["state"] = "firing"
+    bow["fired"] = state.tick
+    step = STEPS[bow["direction"]]
+    size = state.grid.size
+    arrows = []
+    for start in start_points(bow):
+        cubes, end, blocked = scan(state, bow, start, step)
+        stop = [start[0] + step[0] * end, start[1] + step[1] * end]
+        arrows.append(
+            {
+                "start": start,
+                "stop": stop,
+                "cubes": [[cube, reach_tick(state, steps * size)] for cube, steps in cubes],
+                "next": 0,
+                "end": reach_tick(state, abs(end) * size),
+                "blocked": blocked,
+            }
+        )
+    bow["arrows"] = arrows
+    base.emit(
+        state,
+        "crossbow_fire",
+        {
+            "bow": index,
+            "arrows": [
+                {"start": a["start"], "stop": a["stop"], "cubes": [list(c) for c in a["cubes"]], "end": a["end"]}
+                for a in arrows
+            ],
+        },
+    )
+    base.schedule(state, 0, "crossbow_arrows", index)
+
+
+def crossbow_arrows(state: base.State, index: int) -> None:
+    """Timer, every tick while a crossbow's arrows fly: each arrow hits the listed cubes it has reached, in arrow
+    order; once every flight has ended and the arrows have shrunk away, the crossbow leaves at the next frame."""
+    bow = state.features[NUMBER]["bows"][index]
+    for number, arrow in enumerate(bow["arrows"]):
+        while arrow["next"] < len(arrow["cubes"]) and arrow["cubes"][arrow["next"]][1] <= state.tick:
+            cube = state.grid.targets[arrow["cubes"][arrow["next"]][0]]
+            arrow["next"] += 1
+            if not cube.dead and cube.health > 0:
+                base.emit(state, "arrow_hit", {"bow": index, "arrow": number, "target": cube.id})
+                aim.hit(state, cube, ARROW_DAMAGE, None)
+    last = max(arrow["end"] for arrow in bow["arrows"])
+    if state.tick < last:
+        base.schedule(state, 1, "crossbow_arrows", index)
+        return
+    base.schedule(state, last + ARROW_VANISH + 1 - state.tick, "crossbow_gone", index)
+
+
+def crossbow_gone(state: base.State, index: int) -> None:
+    """Timer: the crossbow leaves the picture, and its controller syncs the pigs a frame later."""
+    state.features[NUMBER]["bows"][index]["state"] = "gone"
+    base.emit(state, "crossbow_gone", {"bow": index})
+    base.schedule(state, 1, "crossbow_sync", index)
+
+
+def crossbow_sync(state: base.State, index: int) -> None:
+    """Timer: once no shot and no crossbow's arrows are in flight, the pigs are synced with the picture: empty pigs
+    vanish, spare ammo is trimmed and the auto-finisher may start."""
+    if state.over is not None:
+        return
+    if state.shots or any(bow["state"] == "firing" for bow in state.features[NUMBER]["bows"]):
+        base.schedule(state, 1, "crossbow_sync", index)
+        return
+    unicorn.sync(state)
+
+
+# The arrows move with the shots; the crossbow leaves at the start of a frame; the sync is a coroutine resumed after
+# every script's Update
+base.register_timer("crossbow_arrows", base.PHASE_SHOTS, crossbow_arrows)
+base.register_timer("crossbow_gone", base.PHASE_TAPS, crossbow_gone)
+base.register_timer("crossbow_sync", base.PHASE_RELEASE, crossbow_sync)
+
+
+def on_event(state: base.State, name: str, data: dict) -> None:
+    """A booster starts or ends. At the end the crossbows it killed fire, then the Super Shooter's colors kill their
+    crossbows, which fire at once."""
+    mine = state.features.get(NUMBER)
+    if mine is None:
+        return
+    if name in BOOSTER_STARTS:
+        mine["boosting"] = True
+        if name == "super_shot":
+            mine["pending"].append(data["color"])
+        return
+    if name != "booster_done":
+        return
+    mine["boosting"] = False
+    for index, bow in enumerate(mine["bows"]):
+        if bow["state"] == "armed":
+            fire(state, index)
+    pending = mine["pending"]
+    mine["pending"] = []
+    for color in pending:
+        for bow in mine["bows"]:
+            target = state.grid.targets[bow["target"]]
+            if not target.dead and target.color == color and target.health >= 1:
+                aim.hit(state, target, target.health, None)
+
+
+def remaining_hits(state: base.State, color: int) -> int:
+    """The hits the standing crossbows of this color still take."""
+    mine = state.features.get(NUMBER)
+    if mine is None:
+        return 0
+    total = 0
+    for bow in mine["bows"]:
+        target = state.grid.targets[bow["target"]]
+        if not target.dead and target.color == color:
+            total += target.health
+    return total
+
+
+def checksum(state: base.State, h: int) -> int:
+    mine = state.features.get(NUMBER)
+    if mine is None:
+        return h
+    h = base.mix(base.mix(h, len(mine["bows"])), int(mine["boosting"]))
+    h = base.mix(h, len(mine["pending"]))
+    for bow in mine["bows"]:
+        target = state.grid.targets[bow["target"]]
+        h = base.mix(base.mix(h, target.health), int(target.dead))
+        h = base.mix(base.mix(h, STATES.index(bow["state"])), bow["fired"])
+        h = base.mix(h, len(bow["arrows"]))
+        for arrow in bow["arrows"]:
+            h = base.mix(base.mix(base.mix(h, len(arrow["cubes"])), arrow["next"]), arrow["end"])
+    return h
