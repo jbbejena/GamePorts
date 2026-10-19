@@ -55,6 +55,6 @@ They don't run on their own. They plug into **[ActivityHub](https://github.com/v
 
 # Contact and takedown requests
 
-**If you own the rights to one of these games** and want its port removed, open an issue titled "Takedown request" on this repo, or message **vertyco** on Discord. Say which game it is and that you hold the rights to it. I'll take the cog down promptly, no argument needed.
+**If you own the rights to one of these games** and want its port removed, open an issue titled "Takedown request" on this repo, or message **vertyco** on Discord. Say which game it is and that you hold the rights to it. Please send it from an official email address or account for the studio or publisher, so I can confirm it's really you. I'll take the cog down promptly.
 
 For help or bug reports, open an [issue](https://github.com/vertyco/GamePorts/issues), or ask in [#support_vrt-cogs](https://discord.com/channels/240154543684321280/1123338506396254240/1123341301212000429) in the [Red Cog Support](https://discord.gg/GET4DVk) server.
