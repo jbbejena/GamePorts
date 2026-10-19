@@ -1,0 +1,49 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+.pytest_cache/
+
+# Logs and local databases
+*.log
+*.sqlite
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Editors
+/.idea
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Tests stay local unless a cog opts in
+tests/
+!ageofwar/tests/
+!botarena3/tests/
+!tanks/tests/
+
+# Scratch and local docs
+scratch*
+scratch/
+.tmp/
+docs/
+test_outputs/
+TODO.md
+settings.local.json

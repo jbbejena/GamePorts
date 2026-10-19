@@ -1,0 +1,16 @@
+{
+  "author": [
+    "Vertyco"
+  ],
+  "description": "Ports of classic Flash and phone games for ActivityHub, played together inside your bot's Discord Activity. Needs ActivityHub from the vrt-cogs repo.",
+  "install_msg": "Thanks for installing!\nThese games need ActivityHub from the vrt-cogs repo, installed and set up first: https://github.com/vertyco/vrt-cogs/blob/main/activityhub/README.md",
+  "name": "gameports",
+  "short": "Classic game ports for ActivityHub by Vertyco",
+  "tags": [
+    "games",
+    "activity",
+    "activityhub",
+    "fun",
+    "vertyco"
+  ]
+}
