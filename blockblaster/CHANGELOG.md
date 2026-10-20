@@ -1,5 +1,12 @@
 # Block Blaster Changelog
 
+## 0.2.2
+
+- Settings has a volume slider under the Sound effects switch and under the Music switch, so you can turn either down without muting it. Each slider is remembered on that device.
+- The cats waiting behind the front of each column show again, as many rows as fit above the booster buttons. Before, only the front cat of each column showed until the Super Unicorn was unlocked.
+- A tied-together cat now always shows its rope. When its partner waits in a row with no room on screen, the rope runs down off the screen toward it, so it's clear why the cat can't go yet.
+- Fixed thin light lines across the win, fail, new feature and booster cards on short windows, like a phone held sideways.
+
 ## 0.2.1
 
 - Fixed the next level never loading after a level with tied-together cats, which meant closing and reopening the game every time.

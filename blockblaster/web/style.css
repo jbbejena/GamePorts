@@ -1433,6 +1433,7 @@ button {
 
 .switch-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1443,6 +1444,11 @@ button {
   font-family: var(--display);
   font-weight: 900;
   font-size: max(16px, 4.4cqw);
+}
+
+/* The name takes the room its switch leaves, so a narrow row wraps the name rather than pushing the switch down */
+.switch-row > span {
+  flex: 1 1 0;
 }
 
 /* A track with the original's knob picture sliding along it */
@@ -1476,6 +1482,52 @@ button {
 
 .switch[aria-checked="true"] .knob {
   left: calc(100% - 38px);
+}
+
+/* A volume slider under its switch, on a line of its own: the track fills green up to the original's knob picture */
+.volume {
+  --level: 100%;
+  flex: 1 0 100%;
+  height: 32px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.volume::-webkit-slider-runnable-track {
+  box-sizing: border-box;
+  height: 16px;
+  border: 3px solid #17324d;
+  border-radius: 8px;
+  background: linear-gradient(to right, #3fc41d var(--level), #5a6ea8 var(--level));
+}
+
+.volume::-moz-range-track {
+  box-sizing: border-box;
+  height: 16px;
+  border: 3px solid #17324d;
+  border-radius: 8px;
+  background: linear-gradient(to right, #3fc41d var(--level), #5a6ea8 var(--level));
+}
+
+.volume::-webkit-slider-thumb {
+  width: 36px;
+  height: 22px;
+  margin-top: -6px;
+  border: 0;
+  background: url("art/ui/Toggle_Handle.png") center / 100% 100% no-repeat;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.volume::-moz-range-thumb {
+  width: 36px;
+  height: 22px;
+  border: 0;
+  border-radius: 0;
+  background: url("art/ui/Toggle_Handle.png") center / 100% 100% no-repeat;
 }
 
 .dialog-button {
@@ -1744,18 +1796,21 @@ button {
   display: none;
 }
 
-/* A short window (a phone held sideways) shrinks the cards to fit */
+/* A short window (a phone held sideways) shrinks the cards to fit. Zoom, not scale: a scaled panel's nine pieces of
+   art no longer meet on whole pixels and show thin lines between them */
 @media (max-height: 640px) {
+  .dialog,
   .win-card,
   .fail-card {
-    scale: 0.82;
+    zoom: 0.82;
   }
 }
 
 @media (max-height: 480px) {
+  .dialog,
   .win-card,
   .fail-card {
-    scale: 0.58;
+    zoom: 0.58;
   }
 }
 
@@ -1942,14 +1997,14 @@ button {
 @media (max-height: 640px) {
   .intro-page,
   .unlock-card {
-    scale: 0.82;
+    zoom: 0.82;
   }
 }
 
 @media (max-height: 480px) {
   .intro-page,
   .unlock-card {
-    scale: 0.58;
+    zoom: 0.58;
   }
 }
 

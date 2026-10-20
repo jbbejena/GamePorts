@@ -1,8 +1,10 @@
 // Feature 2, the Connected Pig: a rope ties each member of a group to the next one, in queues, slots, the rescue row
 // and on the belt (reference frames linked-pairs-queue.png, level1000-linked-pairs-slots.png). Each half of the rope
 // takes the color of the pig it starts from, blending only in the middle, and it arcs over the pigs standing between two
-// members of one queue. The members hop on one after another 0.05 s apart, which the placing already does. The groups
-// come from the simulation (sim/features/connected.js); the rope never changes a rule.
+// members of one queue. A member in a queue row the screen has no room for still gets its rope, running off the bottom
+// of the screen toward it in the drawn member's color, so a member that can't go yet shows why. The members hop on one
+// after another 0.05 s apart, which the placing already does. The groups come from the simulation
+// (sim/features/connected.js); the rope never changes a rule.
 import * as THREE from "../vendor/three.module.min.js";
 import { COLORS } from "../picture.js";
 import { NUMBER } from "../sim/features/connected.js";
@@ -39,6 +41,10 @@ class ConnectedLook {
     this.groups = [];
     // Per member id: {x, y, z, s, color} where it is drawn this frame; `seen` is false while it isn't drawn
     this.ends = new Map();
+    // This frame's queues and the places their pigs stand, and where a member past the drawn rows would stand
+    this.queues = [];
+    this.spots = null;
+    this.offScreen = { x: 0, y: 0, z: 0, s: 1, color: new THREE.Color() };
   }
 
   // A new level: a place to note each member, made once
@@ -59,9 +65,11 @@ class ConnectedLook {
     this.mesh.count = 0;
   }
 
-  begin(state) {
+  begin(state, spots = null) {
     const mine = state.features[NUMBER];
     this.groups = mine ? mine.groups : [];
+    this.queues = state.queues;
+    this.spots = spots;
     for (const end of this.ends.values()) {
       end.seen = false;
     }
@@ -84,15 +92,20 @@ class ConnectedLook {
     end.color.copy(pose.tint || COLORS[pig.color]);
   }
 
-  // Draw a rope between every two linked members that are both on screen
+  // Draw a rope between every two linked members that are both on screen, or from a drawn member to one in a queue
+  // row past the drawn ones
   end() {
     let count = 0;
     for (const members of this.groups) {
-      for (let k = 0; k + 1 < members.length; k++) {
+      for (let k = 0; k + 1 < members.length && count + SEGMENTS <= ROPE_CAPACITY; k++) {
         const first = this.ends.get(members[k]);
         const second = this.ends.get(members[k + 1]);
-        if (first.seen && second.seen && count + SEGMENTS <= ROPE_CAPACITY) {
+        if (first.seen && second.seen) {
           count += this.writeRope(count, first, second);
+        } else if (first.seen && this.pastDrawnRows(members[k + 1], first)) {
+          count += this.writeRope(count, first, this.offScreen);
+        } else if (second.seen && this.pastDrawnRows(members[k], second)) {
+          count += this.writeRope(count, this.offScreen, second);
         }
       }
     }
@@ -101,6 +114,28 @@ class ConnectedLook {
     if (this.mesh.instanceColor) {
       this.mesh.instanceColor.needsUpdate = true;
     }
+  }
+
+  // True when this member waits in a queue row the screen has no room for; `offScreen` is then where it would stand,
+  // in the color of the drawn member `seen`, so the rope tells nothing about a pig the player can't see
+  pastDrawnRows(id, seen) {
+    if (!this.spots) {
+      return false;
+    }
+    for (let q = 0; q < this.queues.length; q++) {
+      const row = this.queues[q].indexOf(id);
+      if (row < 0) {
+        continue;
+      }
+      if (row < this.spots.rows[q]) {
+        return false;
+      }
+      const spot = this.spots.queues[q];
+      Object.assign(this.offScreen, { x: spot.x, y: ROPE_HOLD * spot.scale, z: spot.z + row * spot.step, s: spot.scale });
+      this.offScreen.color.copy(seen.color);
+      return true;
+    }
+    return false;
   }
 
   // One rope: a curve from one pig to the other lifted in the middle, drawn as short pieces of tube

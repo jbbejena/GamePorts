@@ -12,6 +12,8 @@ const BUTTON_BLUE = `${ART}PowerupButton_Blue.png`;
 const BUTTON_OFF = `${ART}PowerupButton_Disabled.png`;
 const SOUND_KEY = "blockblaster:sound";
 const MUSIC_KEY = "blockblaster:music";
+const SOUND_VOLUME_KEY = "blockblaster:sound-volume";
+const MUSIC_VOLUME_KEY = "blockblaster:music-volume";
 // Hard (2) and Very Hard (3) levels turn the pill, the gear and the booster strip red
 const HARD_FROM = 2;
 // A restart that the bot never answers gives the button back after this long
@@ -82,6 +84,10 @@ const hud = {
   sound: true,
   music: true,
   switchHandlers: [],
+  // The volume sliders, 0 to 1
+  soundVolume: 1,
+  musicVolume: 1,
+  volumeHandlers: [],
   shopHandler: null,
   // The y (pixels from the scene's top) the queues must end above: the top of the booster buttons while the bar shows, else the screen's bottom
   floor: null,
@@ -104,6 +110,25 @@ function readSwitch(key) {
 function writeSwitch(key, on) {
   try {
     localStorage.setItem(key, on ? "1" : "0");
+  } catch (e) {
+    console.warn("Block Blaster: couldn't save a setting", e);
+  }
+}
+
+// A volume slider's saved level, 0 to 1; full when none is saved
+function readVolume(key) {
+  try {
+    const saved = Number(localStorage.getItem(key) ?? 1);
+    return Number.isFinite(saved) ? Math.min(1, Math.max(0, saved)) : 1;
+  } catch (e) {
+    console.warn("Block Blaster: couldn't read a setting", e);
+    return 1;
+  }
+}
+
+function writeVolume(key, level) {
+  try {
+    localStorage.setItem(key, String(level));
   } catch (e) {
     console.warn("Block Blaster: couldn't save a setting", e);
   }
@@ -513,8 +538,11 @@ export function measureFloor() {
   const bar = $("booster-bar");
   const scene = $("scene");
   let floor = scene.clientHeight - FLOOR_GAP;
-  if (!bar.hidden && bar.offsetParent !== null && bar.children.length) {
-    const top = Math.min(...[...bar.children].map((button) => button.getBoundingClientRect().top));
+  // Only buttons on screen count: a hidden one (the Super Unicorn before it unlocks) reports a top of 0, which would
+  // leave room for no queue rows past the front one
+  const shown = [...bar.children].filter((button) => button.offsetParent !== null);
+  if (shown.length) {
+    const top = Math.min(...shown.map((button) => button.getBoundingClientRect().top));
     floor = top - scene.getBoundingClientRect().top - FLOOR_GAP;
   }
   if (floor !== hud.floor) {
@@ -720,6 +748,41 @@ function flip(name, key, id) {
   hud.switchHandlers.forEach((handler) => handler(name, hud[name]));
 }
 
+// The volume sliders under the switches. A sound module reads them with soundVolume()/musicVolume() and listens with
+// onVolume()
+export function soundVolume() {
+  return hud.soundVolume;
+}
+
+export function musicVolume() {
+  return hud.musicVolume;
+}
+
+// Called with ("sound" or "music", level from 0 to 1) while the player drags a slider
+export function onVolume(handler) {
+  hud.volumeHandlers.push(handler);
+}
+
+function drawVolume(id, level) {
+  const slider = $(id);
+  slider.value = String(Math.round(level * 100));
+  slider.style.setProperty("--level", `${level * 100}%`);
+}
+
+// A slider sets its volume as it moves and saves it once let go
+function hookVolume(name, key, id) {
+  const slider = $(id);
+  const field = `${name}Volume`;
+  hud[field] = readVolume(key);
+  drawVolume(id, hud[field]);
+  slider.addEventListener("input", () => {
+    hud[field] = Number(slider.value) / 100;
+    drawVolume(id, hud[field]);
+    hud.volumeHandlers.forEach((handler) => handler(name, hud[field]));
+  });
+  slider.addEventListener("change", () => writeVolume(key, hud[field]));
+}
+
 // ---------- Setup ----------
 
 export function initHud(page, actions) {
@@ -750,6 +813,8 @@ export function initHud(page, actions) {
   document.addEventListener("keydown", (event) => event.key === "Escape" && closeSettings());
   $("sound-switch").addEventListener("click", () => flip("sound", SOUND_KEY, "sound-switch"));
   $("music-switch").addEventListener("click", () => flip("music", MUSIC_KEY, "music-switch"));
+  hookVolume("sound", SOUND_VOLUME_KEY, "sound-volume");
+  hookVolume("music", MUSIC_VOLUME_KEY, "music-volume");
   $("restart-button").addEventListener("click", restart);
   $("menu-button").addEventListener("click", () => {
     sound("button");

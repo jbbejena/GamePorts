@@ -1,5 +1,6 @@
 // Block Blaster's sound effects: recorded files from the original, played through Web Audio. Other modules call
-// play(name) with a short name from SOUNDS below. The effects switch (setEffects) silences them at once.
+// play(name) with a short name from SOUNDS below. The effects switch (setEffects) silences them at once, and the
+// effects and music sliders (setEffectsVolume, setMusicVolume) turn each down.
 // Music is three loops (menus, a level, a Very Hard level). setScene(name) asks for one: it crossfades in over the one
 // before, each loop's last seconds fade into its own start so it never stops, setDuck makes it quieter under panels,
 // and the music switch (setMusic) stops it at once and keeps any from starting while it is off.
@@ -198,6 +199,9 @@ const audio = {
   out: null,
   effects: true,
   music: true,
+  // The sliders' levels, 0 to 1
+  effectsVolume: 1,
+  musicVolume: 1,
   musicOut: null,
   // The loop wanted now, the one playing ({name, voices, timer}), the decoded loops and the loops being fetched
   scene: null,
@@ -237,7 +241,7 @@ function unlock() {
       return;
     }
     audio.out = audio.ctx.createGain();
-    audio.out.gain.value = audio.effects ? EFFECTS_VOLUME : 0;
+    audio.out.gain.value = effectsLevel();
     audio.out.connect(audio.ctx.destination);
     audio.musicOut = audio.ctx.createGain();
     audio.musicOut.gain.value = musicLevel();
@@ -271,13 +275,35 @@ export function initSound() {
   window.addEventListener("pagehide", close);
 }
 
+function effectsLevel() {
+  return audio.effects ? EFFECTS_VOLUME * audio.effectsVolume : 0;
+}
+
 export function setEffects(on) {
   audio.effects = on;
   if (audio.out) {
     const now = audio.ctx.currentTime;
     audio.out.gain.cancelScheduledValues(now);
-    audio.out.gain.setValueAtTime(on ? EFFECTS_VOLUME : 0, now);
+    audio.out.gain.setValueAtTime(effectsLevel(), now);
   }
+}
+
+// The effects slider, 0 to 1. A short ramp keeps a drag from clicking
+export function setEffectsVolume(level) {
+  audio.effectsVolume = level;
+  if (audio.out) {
+    const now = audio.ctx.currentTime;
+    const gain = audio.out.gain;
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(gain.value, now);
+    gain.linearRampToValueAtTime(effectsLevel(), now + OFF_FADE);
+  }
+}
+
+// The music slider, 0 to 1
+export function setMusicVolume(level) {
+  audio.musicVolume = level;
+  fadeMusic(OFF_FADE);
 }
 
 // The music switch: off stops the loop at once and keeps any from starting, on starts the one wanted
@@ -360,7 +386,7 @@ function musicLevel() {
   if (!audio.music) {
     return 0;
   }
-  return MUSIC_VOLUME * (audio.ducked ? MUSIC_DUCKED : 1);
+  return MUSIC_VOLUME * audio.musicVolume * (audio.ducked ? MUSIC_DUCKED : 1);
 }
 
 function fadeMusic(seconds) {
