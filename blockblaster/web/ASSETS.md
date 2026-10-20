@@ -530,6 +530,10 @@ Left out, as spec section 9.2 says: the Race, Lava Quest and Cosmic Journey soun
 | `sounds/booster_shooting.ogg` | Original `sounds/booster_shooting.wav` | Booster / powerup / Super Unicorn / unlock |
 | `sounds/breath3.ogg` | Original `sounds/breath3.wav` | Misc feature or transition whoosh/impact |
 | `sounds/button_tap_pop.ogg` | Original `sounds/Button_Tap_Pop.wav` | UI tap / click / pop |
+| `sounds/cat_meow_1.ogg` | New: cut by `art-src/make_meows.py` from "Meow" by IgnasD (CC0, https://opengameart.org/content/meow) | A cat is tapped |
+| `sounds/cat_meow_2.ogg` | New: cut by `art-src/make_meows.py` from `cat_mewfood.wav` in "Cat Purr & Meow" by Kerzoven (CC0, https://opengameart.org/content/cat-purr-meow) | A cat is tapped |
+| `sounds/cat_mew_1.ogg` | New: cut by `art-src/make_meows.py` from `cat_mewfood.wav` in "Cat Purr & Meow" by Kerzoven (CC0) | A cat hops onto the belt |
+| `sounds/cat_mew_2.ogg` | New: cut by `art-src/make_meows.py` from `cat_softmew.wav` in "Cat Purr & Meow" by Kerzoven (CC0) | A cat hops onto the belt |
 | `sounds/click.ogg` | Original `sounds/Click.wav` | UI tap / click / pop |
 | `sounds/coin_counting.ogg` | Original `sounds/coin_counting.wav` | Coins, rewards, claim, purchase |
 | `sounds/coins_collect_several_at_once_001.ogg` | Original `sounds/coins_collect_several_at_once_001.wav` | Coins, rewards, claim, purchase |
@@ -587,8 +591,6 @@ Left out, as spec section 9.2 says: the Race, Lava Quest and Cosmic Journey soun
 | `sounds/old_creaky_wood_floor_stairs_footstep_fast_3_pm_owf_3611.ogg` | Original `sounds/Old_Creaky_Wood_Floor_Stairs_Footstep_Fast_3_PM_OWF_3611.wav` | Hammer / wood block feature |
 | `sounds/opening_metal_slide2.ogg` | Original `sounds/opening_metal_slide2.wav` | Door / conveyor door / slot cage |
 | `sounds/pass_1_trimmed.ogg` | Original `sounds/pass_1_trimmed.wav` | Misc feature or transition whoosh/impact |
-| `sounds/pig2_trimmed.ogg` | Original `sounds/pig2_trimmed.wav` | Pig sound (squeal / tap) |
-| `sounds/pig3_trimmed.ogg` | Original `sounds/pig3_trimmed.wav` | Pig sound (squeal / tap) |
 | `sounds/pixel_packer_engine_03.ogg` | Original `sounds/pixel_packer_engine_03.wav` | Pixel grid breaking / cube pops / gem effects |
 | `sounds/pm_feethmn_footstep_ice_crunch_crack_break_pmsfx_ssni_2432_trimmed.ogg` | Original `sounds/PM_FEETHmn_footstep_ice_crunch_crack_break_PMSFX_SSNI_2432_trimmed.wav` | Ice block / frozen pig shatter |
 | `sounds/pm_fssf_door_mid_3.ogg` | Original `sounds/pm_fssf_door_mid_3.wav` | Door / conveyor door / slot cage |

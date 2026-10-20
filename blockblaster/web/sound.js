@@ -11,8 +11,9 @@
 // (files for play(name, {big: true}), e.g. a larger cube), `volume`, `gap` (shortest wait in ms between two plays of
 // the name) and `voices` (most copies of the name sounding at once).
 const SOUNDS = {
-  tap: { files: ["pig2_trimmed"], volume: 0.8, gap: 40, voices: 3 },
-  hop: { files: ["pig3_trimmed"], volume: 0.6, gap: 40, voices: 3 },
+  // Meows in place of the original's pig grunts
+  tap: { files: ["cat_meow_1", "cat_meow_2"], volume: 0.8, gap: 40, voices: 3 },
+  hop: { files: ["cat_mew_1", "cat_mew_2"], volume: 0.6, gap: 40, voices: 3 },
   slot: { files: ["first_settle2_trimmed"], volume: 0.7, gap: 60, voices: 3 },
   pop: { files: ["pop2"], volume: 0.7, gap: 60, voices: 2 },
   vanish: { files: ["disapper_trimmed"], volume: 0.7, gap: 80, voices: 3 },

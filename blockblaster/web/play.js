@@ -55,6 +55,9 @@ export function initPlay(page, send, screens) {
   canvas.addEventListener("pointerdown", press);
   window.addEventListener("blur", () => hold("focus"));
   window.addEventListener("focus", () => release("focus"));
+  // Back in Discord after the Activity was made small, presses reach the game without it ever getting the focus back,
+  // so a press counts as the player being back too
+  window.addEventListener("pointerdown", () => release("focus"), true);
   document.addEventListener("visibilitychange", () => (document.hidden ? hold("hidden") : release("hidden")));
 }
 

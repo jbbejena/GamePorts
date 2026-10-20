@@ -107,8 +107,9 @@ export function queueIndex(state, pig) {
   return -1;
 }
 
-// Remove a pig from its queue, slot or the rescue queue (the rest of the rescue queue closes up); returns the queue's
-// index (-1 when it was in none of the level's queues)
+// Remove a pig from its queue, slot, the rescue queue (the rest of the rescue queue closes up) or the line at the
+// belt's exit, as MapLogic$$RemoveShooter does from every place; returns the queue's index (-1 when it was in none of
+// the level's queues). A Connected group can be sent off while a member waits in that line
 export function takeOut(state, pig) {
   for (let index = 0; index < state.queues.length; index++) {
     const at = state.queues[index].indexOf(pig.id);
@@ -125,6 +126,7 @@ export function takeOut(state, pig) {
   if (rescued >= 0) {
     state.rescue.splice(rescued, 1);
   }
+  state.entrance = state.entrance.filter((entry) => entry[0] !== pig.id);
   return -1;
 }
 

@@ -94,8 +94,9 @@ def queue_index(state: base.State, pig: base.Pig) -> int:
 
 
 def take_out(state: base.State, pig: base.Pig) -> int:
-    """Remove a pig from its queue, slot or the rescue queue (the rest of the rescue queue closes up); returns the
-    queue's index (-1 when it was in none of the level's queues)."""
+    """Remove a pig from its queue, slot, the rescue queue (the rest of the rescue queue closes up) or the line at the
+    belt's exit, as MapLogic$$RemoveShooter does from every place; returns the queue's index (-1 when it was in none
+    of the level's queues). A Connected group can be sent off while a member waits in that line."""
     for index, queue in enumerate(state.queues):
         if pig.id in queue:
             queue.remove(pig.id)
@@ -104,6 +105,7 @@ def take_out(state: base.State, pig: base.Pig) -> int:
         state.slots[state.slots.index(pig.id)] = None
     if pig.id in state.rescue:
         state.rescue.remove(pig.id)
+    state.entrance = [entry for entry in state.entrance if entry[0] != pig.id]
     return -1
 
 

@@ -1,5 +1,11 @@
 # Block Blaster Changelog
 
+## 0.2.3
+
+- The cats meow when you tap them and when they hop onto the belt, instead of oinking like the original's pigs.
+- Fixed the belt staying stopped after making the Activity small in Discord and opening it again. Any press in the game now starts it again.
+- Fixed tied cats sometimes getting stuck in two places at once, which could fail a level "Out of space" for no reason, or leave a level that could never end after a revive. It happened when you tapped a tied cat while its partner waited at the end of the belt for a free slot.
+
 ## 0.2.2
 
 - Settings has a volume slider under the Sound effects switch and under the Music switch, so you can turn either down without muting it. Each slider is remembered on that device.
