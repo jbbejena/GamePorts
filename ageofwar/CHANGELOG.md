@@ -1,5 +1,9 @@
 # Age of War Changelog
 
+## 0.4.1
+
+- Fixed thin light lines on units and other art where their parts meet, like the joints on the dino rider.
+
 ## 0.4.0
 
 - Several games can run at once in the same voice channel. Opening Age of War while a game is already on shows a list of the games here: watch one, join one that has a free base, or press New game to start your own against the computer.

@@ -92,6 +92,38 @@ def test_a_bought_unit_trains_and_the_cash_drops(driver, live):
     assert not problems, problems
 
 
+HALF_SEE_THROUGH_WHITE_OVER_BLACK = """
+const done = arguments[arguments.length - 1];
+(async () => {
+  // The game's own copies of its modules, which sit in a folder named by their version
+  const scene = performance.getEntriesByType("resource").find((entry) => entry.name.endsWith("/scene.js")).name;
+  const { pageTexture } = await import(scene);
+  const { Application, Container, Graphics, Sprite } = await import(new URL("vendor/pixi.min.mjs", scene).href);
+  const picture = document.createElement("canvas");
+  picture.width = picture.height = 4;
+  const pen = picture.getContext("2d");
+  pen.fillStyle = "rgba(255, 255, 255, 0.5)";
+  pen.fillRect(0, 0, 4, 4);
+  const blob = await new Promise((resolve) => picture.toBlob(resolve));
+  const app = new Application();
+  await app.init({ width: 4, height: 4, preference: "webgl" });
+  const both = new Container();
+  both.addChild(new Graphics().rect(0, 0, 4, 4).fill(0x000000), new Sprite(await pageTexture(blob)));
+  const { pixels } = app.renderer.extract.pixels(both);
+  app.destroy();
+  return pixels[0];
+})().then(done, (e) => done(String(e)));
+"""
+
+
+def test_atlas_art_blends_its_see_through_edges(driver, live):
+    # Drawn too bright, the soft edges of a unit's parts show as light seams where the parts meet
+    open_game(driver, live)
+    red = driver.execute_async_script(HALF_SEE_THROUGH_WHITE_OVER_BLACK)
+    assert isinstance(red, int), red
+    assert 115 <= red <= 140
+
+
 def first_spot(driver):
     """The canvas, and where on it the left base's first turret spot button is, from the canvas's center. The view
     starts on the left base, and the field sits on the canvas's bottom edge"""

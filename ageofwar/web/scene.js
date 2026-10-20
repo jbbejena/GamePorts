@@ -5,6 +5,7 @@ import {
   Application,
   Container,
   Graphics,
+  ImageSource,
   Rectangle,
   Text,
   Texture,
@@ -962,6 +963,14 @@ async function download(url, onPart) {
   return new Blob(chunks, { type: resp.headers.get("Content-Type") || "" });
 }
 
+// An atlas page's picture as a texture. Browsers don't premultiply a decoded bitmap's colors on upload, so it is decoded
+// premultiplied, which is how Pixi blends; the soft edges of a unit's parts would otherwise draw too bright, as light
+// seams where the parts meet
+export async function pageTexture(blob) {
+  const bitmap = await createImageBitmap(blob, { premultiplyAlpha: "premultiply" });
+  return new Texture({ source: new ImageSource({ resource: bitmap, alphaMode: "premultiplied-alpha" }) });
+}
+
 // onProgress hears how much of the art has loaded, 0 to 1: the timelines are the first half, the atlas pages the rest
 export async function createScene(host, onProgress) {
   const data = JSON.parse(await (await download("art/flash.json", (part) => onProgress(part / 2))).text());
@@ -972,8 +981,7 @@ export async function createScene(host, onProgress) {
         parts[index] = part;
         onProgress(0.5 + parts.reduce((sum, done) => sum + done, 0) / parts.length / 2);
       });
-      // Decoded as Pixi decodes the files it loads itself: it puts the colors over the see-through parts on upload
-      return Texture.from(await createImageBitmap(blob, { premultiplyAlpha: "none" }));
+      return pageTexture(blob);
     }),
   );
   // The original's labels draw once, so their font has to be ready before the first one is made
