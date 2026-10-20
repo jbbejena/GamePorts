@@ -170,7 +170,7 @@ export function stopLevel() {
   play.pending = [];
   play.page.sim = null;
   if (play.page.scene) {
-    play.page.scene.looks.clear();
+    play.page.scene.pigs.clear();
   }
 }
 

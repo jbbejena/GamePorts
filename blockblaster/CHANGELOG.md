@@ -1,5 +1,9 @@
 # Block Blaster Changelog
 
+## 0.2.1
+
+- Fixed the next level never loading after a level with tied-together cats, which meant closing and reopening the game every time.
+
 ## 0.2.0
 
 - Every level twist is in: levels 600 to 2,600 now play with all of their twists (U.F.O.s, pumpkins, shackles, curtains, cat cells, dragons, jelly beans, bull totems, music toys, crossbows, scissors gates, dungeons, slot cages, nesting dolls, astro cats, conveyor walls and pixel mixers), with their revives.

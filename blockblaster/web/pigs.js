@@ -675,6 +675,15 @@ class PigGroup {
     this.sync(state);
   }
 
+  // The level is left: its looks are cleared and it is never drawn again, so a resize or a moved floor before the next
+  // level can't run the cleared looks against it
+  clear() {
+    this.state = null;
+    if (this.looks) {
+      this.looks.clear();
+    }
+  }
+
   // The camera moved: the press boxes are worked out again on the next press
   forgetBoxes() {
     this.pressBoxes = null;
