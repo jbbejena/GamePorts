@@ -531,8 +531,8 @@ Left out, as spec section 9.2 says: the Race, Lava Quest and Cosmic Journey soun
 | `sounds/breath3.ogg` | Original `sounds/breath3.wav` | Misc feature or transition whoosh/impact |
 | `sounds/button_tap_pop.ogg` | Original `sounds/Button_Tap_Pop.wav` | UI tap / click / pop |
 | `sounds/cat_meow_1.ogg` | New: cut by `art-src/make_meows.py` from "Meow" by IgnasD (CC0, https://opengameart.org/content/meow) | A cat is tapped |
-| `sounds/cat_meow_2.ogg` | New: cut by `art-src/make_meows.py` from `cat_mewfood.wav` in "Cat Purr & Meow" by Kerzoven (CC0, https://opengameart.org/content/cat-purr-meow) | A cat is tapped |
-| `sounds/cat_mew_1.ogg` | New: cut by `art-src/make_meows.py` from `cat_mewfood.wav` in "Cat Purr & Meow" by Kerzoven (CC0) | A cat hops onto the belt |
+| `sounds/cat_meow_2.ogg` | New: cut by `art-src/make_meows.py` from "Kitten Mew" by AntumDeluge (CC0, https://opengameart.org/content/kitten-mew) | A cat is tapped |
+| `sounds/cat_mew_1.ogg` | New: cut by `art-src/make_meows.py` from `cat_softmew.wav` in "Cat Purr & Meow" by Kerzoven (CC0, https://opengameart.org/content/cat-purr-meow) | A cat hops onto the belt |
 | `sounds/cat_mew_2.ogg` | New: cut by `art-src/make_meows.py` from `cat_softmew.wav` in "Cat Purr & Meow" by Kerzoven (CC0) | A cat hops onto the belt |
 | `sounds/click.ogg` | Original `sounds/Click.wav` | UI tap / click / pop |
 | `sounds/coin_counting.ogg` | Original `sounds/coin_counting.wav` | Coins, rewards, claim, purchase |

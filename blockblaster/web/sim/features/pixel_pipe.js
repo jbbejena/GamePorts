@@ -1,6 +1,7 @@
 // Feature 6, the Pixel Pipe: a body on the picture that refills cubes from a queue of color groups.
-// The body is an obstacle that is never damaged and stays when the pipe is empty. Its front group is the first with
-// cubes left; the original keeps a queue and moves to the next group the moment the count reaches 0
+// The body is an obstacle that is never damaged. It leaves the picture the moment its last cube goes, freeing its
+// cells, as the original's empty pipes vanish (PixelPipeFeature$$DetachInternal, RVA 0x5755408). Its front group is
+// the first with cubes left; the original keeps a queue and moves to the next group the moment the count reaches 0
 // (PixelPipeFeature$$GetMaterialFromCurrentGroup, RVA 0x5754344, then UpdateState, RVA 0x57532E0).
 // Refill on death: when a single-cell cube dies on a cell no pipe covers, the first pipe in file order that isn't busy
 // and whose front group has that color puts a new cube of that color into the dead cube's cell at once and counts down
@@ -57,9 +58,22 @@ export function front(pipe) {
   return null;
 }
 
-// The cell is under a pipe (PixelPipeFeatureController$$IsOnAnyPipe, RVA 0x575DCF4)
+// The pipe still stands on the picture
+export function standing(state, pipe) {
+  return !state.grid.targets[pipe.target].dead;
+}
+
+// The cell is under a standing pipe (PixelPipeFeatureController$$IsOnAnyPipe, RVA 0x575DCF4, over the attached pipes)
 export function underPipe(state, cell) {
-  return state.features[NUMBER].pipes.some((pipe) => pipe.cells.includes(cell));
+  return state.features[NUMBER].pipes.some((pipe) => standing(state, pipe) && pipe.cells.includes(cell));
+}
+
+// The pipe gave its last cube: its body leaves the picture
+export function vanish(state, index) {
+  const body = state.grid.targets[state.features[NUMBER].pipes[index].target];
+  body.dead = true;
+  gridx.remove(state.grid, body);
+  base.emit(state, "pipe_gone", { pipe: index });
 }
 
 // A single-cell cube died: the first free pipe giving its color fills its cell again. Not while the Super Unicorn runs
@@ -98,6 +112,9 @@ export function spawn(state, index, cell) {
   state.cubesStart += 1;
   state.cubesLeft += 1;
   base.emit(state, "pipe_spawn", { pipe: index, cube: cube.id, cell, color });
+  if (front(pipe) === null) {
+    vanish(state, index);
+  }
 }
 
 // Some single-cell cube of this color is on the picture (PixelGridController$$GetPixelCountByMaterial with the
@@ -224,6 +241,9 @@ export function unicornPop(state, index, color) {
   state.cubesStart += 1;
   state.cubesLeft += 1;
   base.emit(state, "pipe_pop", { pipe: index, cube: cube.id, cell, color });
+  if (front(pipe) === null) {
+    vanish(state, index);
+  }
   return cube;
 }
 

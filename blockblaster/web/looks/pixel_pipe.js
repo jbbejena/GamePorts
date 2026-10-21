@@ -1,14 +1,14 @@
 // Feature 6, the Pixel Pipe: a box on its cells in the color it gives next, with a white tag showing how many cubes it
 // still holds and a soft shadow behind it. Each cube it gives leaps from the top of the box to its cell over 0.3 s
 // (the cube is on its cell for the rules at once; picture.js draws the leap), and the box punches up a little as it
-// gives. An empty pipe stays, grey and without a number.
+// gives. An empty pipe pops up a little bigger, then shrinks away (PixelPipeFeature$$DetachInternal, RVA 0x5755408).
 // The box and the tag are the original's `models/features/pixel_pipe_feature.glb`, the shadow its
 // `Shadow_PixelPipe.png` (ASSETS.md). The original gives no sound (its spawnAudio is empty). Everything comes from the
 // simulation's pipe records (sim/features/pixel_pipe.js) and never changes a rule.
 import * as THREE from "../vendor/three.module.min.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
 import { COLORS } from "../picture.js";
-import { NUMBER, front } from "../sim/features/pixel_pipe.js";
+import { NUMBER, front, standing } from "../sim/features/pixel_pipe.js";
 import { L_PER_UNIT, TICKS_PER_SECOND } from "../sim/numbers.js";
 
 export { NUMBER };
@@ -31,8 +31,13 @@ const JUMP_HEIGHT = 5.0;
 const PUNCH_TICKS = 4;
 const PUNCH_ACROSS = 0.1;
 const PUNCH_UP = 0.5;
-// The color of an empty pipe
-const EMPTY = new THREE.Color(0xc9cad6);
+// The vanish: 0.125 s rising 0.1 units and growing to 1.1 (both ease out), then 0.25 s sinking back and shrinking to
+// nothing (ease in, the shrink with a back swing)
+const POP_TICKS = 7.5;
+const SHRINK_TICKS = 15;
+const VANISH_RISE = 0.1;
+const VANISH_GROW = 1.1;
+const BACK = 1.70158;
 // The tag's number: dark digits as tall as this share of the tag
 const LABEL_W = 256;
 const LABEL_H = 160;
@@ -128,7 +133,14 @@ class PipeLook {
     const { grid } = state;
     const cell = grid.size / L_PER_UNIT;
     mine.pipes.slice(0, PIPES).forEach((pipe, index) => {
-      this.records.push(this.layout(grid, cell, pipe, index));
+      const record = this.layout(grid, cell, pipe, index);
+      // A pipe that emptied before the page rebuilt its simulation is already gone
+      if (!standing(state, pipe)) {
+        record.goneAt = -Infinity;
+        this.parts[index].holder.visible = false;
+        this.parts[index].shadow.visible = false;
+      }
+      this.records.push(record);
     });
     for (const record of this.records) {
       this.paint(record);
@@ -157,11 +169,14 @@ class PipeLook {
       pipe,
       index,
       scale,
+      unit,
+      shadowScale: part.shadow.scale.clone(),
       from: new THREE.Vector3(midX, this.boxTop * scale, midZ),
       jump: JUMP_HEIGHT * unit,
       color: null,
       total: null,
       punchAt: -Infinity,
+      goneAt: null, // the tick it emptied, while it still stands null
     };
   }
 
@@ -172,7 +187,10 @@ class PipeLook {
       return;
     }
     const part = this.parts[record.index];
-    part.tint.color.copy(color < 0 ? EMPTY : COLORS[color]);
+    // An empty pipe keeps its last color while it vanishes
+    if (color >= 0) {
+      part.tint.color.copy(COLORS[color]);
+    }
     if (total !== record.total) {
       const g = part.canvas.getContext("2d");
       g.clearRect(0, 0, LABEL_W, LABEL_H);
@@ -199,11 +217,11 @@ class PipeLook {
 
   onEvents(events, state) {
     for (const event of events) {
-      if (event.k !== "pipe_spawn") {
-        continue;
-      }
       const record = this.records[event.pipe];
-      if (!record) {
+      if (event.k === "pipe_gone" && record) {
+        record.goneAt = event.t;
+      }
+      if (event.k !== "pipe_spawn" || !record) {
         continue;
       }
       this.paint(record);
@@ -215,7 +233,7 @@ class PipeLook {
     }
   }
 
-  // The punch, and the colors and numbers again after the page rebuilt its simulation under the look
+  // The punch, the vanish, and the colors and numbers again after the page rebuilt its simulation under the look
   frame(alpha, state) {
     this.now = state.tick - 1 + alpha;
     for (const record of this.records) {
@@ -224,7 +242,36 @@ class PipeLook {
       const k = u < 1 ? Math.sin(Math.PI * u) : 0;
       const box = this.parts[record.index].box;
       box.scale.set(1 + PUNCH_ACROSS * k, 1 + PUNCH_UP * k, 1 + PUNCH_ACROSS * k);
+      if (record.goneAt !== null) {
+        this.vanishing(record);
+      }
     }
+  }
+
+  // The empty pipe's pop and shrink, hidden once it is over
+  vanishing(record) {
+    const part = this.parts[record.index];
+    const t = this.now - record.goneAt;
+    if (t >= POP_TICKS + SHRINK_TICKS) {
+      part.holder.visible = false;
+      part.shadow.visible = false;
+      return;
+    }
+    let grow;
+    let rise;
+    if (t < POP_TICKS) {
+      const u = clamp01(t / POP_TICKS);
+      const out = 1 - (1 - u) * (1 - u);
+      grow = 1 + (VANISH_GROW - 1) * out;
+      rise = VANISH_RISE * out;
+    } else {
+      const u = clamp01((t - POP_TICKS) / SHRINK_TICKS);
+      grow = VANISH_GROW * (1 - ((BACK + 1) * u * u * u - BACK * u * u));
+      rise = VANISH_RISE * (1 - u * u);
+    }
+    part.holder.position.y = rise * record.unit;
+    part.holder.scale.setScalar(record.scale * Math.max(0, grow));
+    part.shadow.scale.copy(record.shadowScale).multiplyScalar(Math.max(0, grow));
   }
 }
 

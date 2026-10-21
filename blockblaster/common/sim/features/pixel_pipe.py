@@ -1,7 +1,8 @@
 """Feature 6, the Pixel Pipe: a body on the picture that refills cubes from a queue of color groups.
 
-The body is an obstacle that is never damaged and stays when the pipe is empty. Its front group is the first with
-cubes left; the original keeps a queue and moves to the next group the moment the count reaches 0
+The body is an obstacle that is never damaged. It leaves the picture the moment its last cube goes, freeing its
+cells, as the original's empty pipes vanish (PixelPipeFeature$$DetachInternal, RVA 0x5755408). Its front group is
+the first with cubes left; the original keeps a queue and moves to the next group the moment the count reaches 0
 (PixelPipeFeature$$GetMaterialFromCurrentGroup, RVA 0x5754344, then UpdateState, RVA 0x57532E0).
 
 Refill on death: when a single-cell cube dies on a cell no pipe covers, the first pipe in file order that isn't busy
@@ -66,9 +67,23 @@ def front(pipe: dict) -> list[int] | None:
     return None
 
 
+def standing(state: base.State, pipe: dict) -> bool:
+    """The pipe still stands on the picture."""
+    return not state.grid.targets[pipe["target"]].dead
+
+
 def under_pipe(state: base.State, cell: int) -> bool:
-    """The cell is under a pipe (PixelPipeFeatureController$$IsOnAnyPipe, RVA 0x575DCF4)."""
-    return any(cell in pipe["cells"] for pipe in state.features[NUMBER]["pipes"])
+    """The cell is under a standing pipe (PixelPipeFeatureController$$IsOnAnyPipe, RVA 0x575DCF4, over the attached
+    pipes)."""
+    return any(standing(state, pipe) and cell in pipe["cells"] for pipe in state.features[NUMBER]["pipes"])
+
+
+def vanish(state: base.State, index: int) -> None:
+    """The pipe gave its last cube: its body leaves the picture."""
+    body = state.grid.targets[state.features[NUMBER]["pipes"][index]["target"]]
+    body.dead = True
+    gridx.remove(state.grid, body)
+    base.emit(state, "pipe_gone", {"pipe": index})
 
 
 def on_event(state: base.State, name: str, data: dict) -> None:
@@ -102,6 +117,8 @@ def spawn(state: base.State, index: int, cell: int) -> None:
     state.cubes_start += 1
     state.cubes_left += 1
     base.emit(state, "pipe_spawn", {"pipe": index, "cube": cube.id, "cell": cell, "color": color})
+    if front(pipe) is None:
+        vanish(state, index)
 
 
 def singles_left(state: base.State, color: int) -> bool:
@@ -205,6 +222,8 @@ def unicorn_pop(state: base.State, index: int, color: int) -> gridx.Target | Non
     state.cubes_start += 1
     state.cubes_left += 1
     base.emit(state, "pipe_pop", {"pipe": index, "cube": cube.id, "cell": cell, "color": color})
+    if front(pipe) is None:
+        vanish(state, index)
     return cube
 
 

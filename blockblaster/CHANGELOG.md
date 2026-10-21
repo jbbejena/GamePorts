@@ -1,5 +1,12 @@
 # Block Blaster Changelog
 
+## 0.2.4
+
+- Pixel Pipes vanish once they have given their last cube, as in the original, so the cats can shoot past where they stood. Before, an empty pipe stayed in the way, which made levels like 72 impossible to beat.
+- Fixed cats flashing on random parts of the belt while it speeds up at the end of a level.
+- On squarer windows, like a desktop Activity window, the waiting cats are drawn a little smaller so at least two rows of each column show, as on a phone. Before, only the front cat of each column fit above the booster buttons.
+- Two of the cat sounds were cut from a recording that could sound like a bark; they are new, cleaner meows.
+
 ## 0.2.3
 
 - The cats meow when you tap them and when they hop onto the belt, instead of oinking like the original's pigs.

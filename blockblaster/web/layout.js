@@ -25,6 +25,12 @@ const COUNTER_HALF_EM = 0.85;
 const COUNTER_FONT_MIN = 15;
 const COUNTER_FONT_SHARE = 0.05;
 const COUNTER_GAP = 6;
+// A squarer column draws bigger pigs, and the floor can then cut each queue to its front pig. The queue pigs shrink, in
+// steps of QUEUE_SCALE_STEP and never below QUEUE_SCALE_MIN, until this many rows fit, as the original shows on a phone;
+// when even QUEUE_SCALE_MIN can't fit them they stay full size
+const QUEUE_MIN_ROWS = 2;
+const QUEUE_SCALE_MIN = 0.8;
+const QUEUE_SCALE_STEP = 0.02;
 
 export class Layout {
   constructor(board, rig, beltBox) {
@@ -35,13 +41,45 @@ export class Layout {
     this.floor = () => null;
     this.rowsKey = "";
     this.rows = [];
+    this.scaleKey = "";
+    this.scale = 1;
+  }
+
+  fitKey(count) {
+    return `${this.rig.width}x${this.rig.height}:${this.rig.size}:${this.floor()}:${count}`;
+  }
+
+  // The queue pigs' scale: the column's spread, made smaller until QUEUE_MIN_ROWS rows fit above the floor. Kept until
+  // the camera, the floor or the number of queues changes
+  queueScale(count) {
+    const key = this.fitKey(count);
+    if (key !== this.scaleKey) {
+      this.scaleKey = key;
+      const floor = this.floor();
+      const lowest = Math.min(this.spread(), QUEUE_SCALE_MIN);
+      let scale = this.spread();
+      while (floor !== null && count > 0 && scale > lowest && !this.rowsFit(count, scale, floor)) {
+        scale = Math.max(lowest, scale - QUEUE_SCALE_STEP);
+      }
+      // A column too short for the rows even at the smallest scale keeps its pigs at full size
+      this.scale = scale === lowest && !this.rowsFit(count, scale, floor) ? this.spread() : scale;
+    }
+    return this.scale;
+  }
+
+  // QUEUE_MIN_ROWS pigs of each queue stand above the floor at this scale
+  rowsFit(count, scale, floor) {
+    return this.queueSpots(count, scale).every((spot) => {
+      const box = this.pigBox(spot.x, spot.z + (QUEUE_MIN_ROWS - 1) * spot.step, spot.scale);
+      return box.y + box.h <= floor;
+    });
   }
 
   // How many pigs of each queue fit above the floor: the original draws only the rows that fit. The answer is kept
   // until the camera, the floor or the number of queues changes
   queueRows(count) {
     const floor = this.floor();
-    const key = `${this.rig.width}x${this.rig.height}:${this.rig.size}:${floor}:${count}`;
+    const key = this.fitKey(count);
     if (key !== this.rowsKey) {
       this.rowsKey = key;
       this.rows = this.queueSpots(count).map((spot) => {
@@ -85,9 +123,8 @@ export class Layout {
   }
 
   // Each queue column's front pig, and the distance from one pig to the next one back (toward the viewer)
-  queueSpots(count) {
+  queueSpots(count, scale = this.queueScale(count)) {
     const { queues } = this.board.anchors;
-    const scale = this.spread();
     const z = this.boardZ(queues.origin[2]) - queues.pigs.first * scale;
     const step = -queues.pigs.step * scale;
     return Array.from({ length: count }, (_, i) => ({ x: this.columnX(count, i), z, step, scale }));

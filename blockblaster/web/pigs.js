@@ -395,13 +395,23 @@ class PigGroup {
     return worldFromPicture(px, py, this.surface);
   }
 
-  // A tray's drawn lap position: slid from one tick back by `alpha`, or the entrance for a tray not yet started
-  trayPos(tray) {
+  // A tray's drawn lap position: slid from one tick back by `alpha`, or the entrance for a tray not yet started. A tray
+  // the auto-finisher looped back to the start this tick slides on to the lap's end and on from the start, never back
+  // across the whole belt
+  trayPos(state, tray) {
     if (!tray.started) {
       return 0;
     }
     const from = this.before.get(tray.id);
-    return from === undefined ? tray.pos : from + (tray.pos - from) * this.alpha;
+    if (from === undefined) {
+      return tray.pos;
+    }
+    if (tray.pos >= from) {
+      return from + (tray.pos - from) * this.alpha;
+    }
+    const end = state.beltPath.end;
+    const at = from + (end - from + tray.pos) * this.alpha;
+    return at <= end ? at : at - end;
   }
 
   remember(state) {
@@ -434,7 +444,7 @@ class PigGroup {
 
   // A pig on the belt stands on its tray and faces straight into the picture from its side
   poseBelt(state, tray) {
-    const at = this.beltPoint(state, this.trayPos(tray));
+    const at = this.beltPoint(state, this.trayPos(state, tray));
     const [ix, iy] = belt.INWARD[belt.side(state, tray)];
     this.setPose(at.x, this.trayY + TRAY_TOP, at.z, Math.atan2(ix, -iy), BELT_PIG_SCALE);
   }
@@ -580,7 +590,7 @@ class PigGroup {
     let used = 0;
     const drawn = [];
     for (const tray of state.belt) {
-      const at = this.beltPoint(state, this.trayPos(tray));
+      const at = this.beltPoint(state, this.trayPos(state, tray));
       this.putTray(used++, at.x, this.trayY, at.z, turn.identity());
       drawn.push([tray.id, at.x, at.z]);
     }
