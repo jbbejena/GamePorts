@@ -4,6 +4,8 @@ Classic games rebuilt to play together inside Discord, as cogs (plugins) for **[
 
 **Warfare 1944 also runs locally in your browser, without Discord or ActivityHub.** See its [standalone setup](warfare1944/README.md#standalone-local-play).
 
+**Want a phone-accessible website with no computer setup?** Use the [Render hosting setup](warfare1944/README.md#online-play-on-your-phone) to deploy it directly from GitHub. The included blueprint selects one free web service.
+
 ![Red-DiscordBot](https://img.shields.io/badge/Red%20DiscordBot-V3.5-red?style=for-the-badge)
 ![Py](https://img.shields.io/badge/python-v3.11-orange?style=for-the-badge)
 

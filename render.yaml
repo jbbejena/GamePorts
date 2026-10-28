@@ -1,0 +1,16 @@
+# One free web service runs the browser assets, Python battles, and WebSockets together.
+services:
+  - type: web
+    name: warfare-1944
+    runtime: python
+    plan: free
+    numInstances: 1
+    buildCommand: pip install -r requirements-local.txt
+    startCommand: python -m warfare1944 --host 0.0.0.0
+    healthCheckPath: /healthz
+    autoDeployTrigger: "off"
+    envVars:
+      - key: WARFARE_DATA_DIR
+        value: /tmp/warfare1944-saves
+      - key: PYTHONUNBUFFERED
+        value: "1"

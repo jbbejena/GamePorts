@@ -13,6 +13,33 @@ Lead the American or German army across the battlefields of 1944, for [ActivityH
 
 There are no Red currency payouts.
 
+## Online play on your phone
+
+Host the game directly from GitHub so you can open its website in Safari or another phone browser. Your Mac or PC can stay off. No local download, Python installation, or Discord account is needed to play the hosted version.
+
+[Deploy Warfare 1944 to Render](https://render.com/deploy?repo=https://github.com/jbbejena/GamePorts/tree/codex/warfare1944-cloud)
+
+You can complete setup on your phone:
+
+1. Open the deployment link above and sign in to Render. You can use your GitHub account.
+2. Let Render access `jbbejena/GamePorts` if it asks. Review the deployment: the included `render.yaml` creates **one Free web service**, with no database or paid disk.
+3. Tap **Deploy Blueprint** and wait until the service is **Live**.
+4. Open the service's `https://…onrender.com` address in Safari. That is your playable game link; bookmark it and use it for future visits.
+
+The Python server, graphics, and WebSocket connections all use that one address. Campaigns, custom battles, watching and versus play use the existing engine. The deployment link currently selects the `codex/warfare1944-cloud` branch; automatic redeploys are off. If that branch is later removed, update the Render service to the branch containing these changes before deploying an update.
+
+### Free hosting and saves
+
+Render's free service sleeps after fifteen minutes without inbound traffic. Opening it again can take about a minute. The first visit after a sleep may show Render's loading page before the game opens.
+
+Free-host server files can disappear on a sleep, restart or redeploy. The browser therefore keeps a campaign backup and sends it back **only when the server has no saved campaign**. Existing server progress is kept. Use the same browser and website address when returning, and keep its cookies and website data. Backups belong to that browser profile; they do not sync to another phone. An unfinished live battle starts again from its mission after the host restarts.
+
+### Hosting configuration
+
+`render.yaml` installs `requirements-local.txt`, starts a single Python process on Render's `PORT`, and uses `/healthz` for health checks. The server detects `RENDER_EXTERNAL_URL` to accept the public HTTPS origin and secure cookies behind Render's TLS proxy. For a custom domain or another reverse-proxy host, set `WARFARE_PUBLIC_URL=https://your-domain.example` or pass `--public-url` with that origin.
+
+Netlify's static hosting alone does not run this version's continuous Python battle server. A Netlify page can link to the hosted game; no additional frontend host is required for the Render setup.
+
 ## Standalone local play
 
 You can run Warfare 1944 directly in a browser without Discord, Red-DiscordBot, or ActivityHub. The same Python battle engine and browser graphics run both versions, including the campaigns, custom battles, upgrades and tutorial. Assets are included in the repository.
@@ -46,7 +73,7 @@ The computer runs the battles and must stay on. The phone works in either orient
 
 ### Campaign saves
 
-Progress and upgrades are saved as JSON files in **`.local/warfare1944/`** inside the repository. These files are excluded from Git. Back up that folder to keep your campaigns. Use a different folder or port with:
+Progress and upgrades are saved as JSON files in **`.local/warfare1944/`** inside the repository. These files are excluded from Git. The browser also keeps a campaign backup, restored only if the server's copy is missing. Back up the JSON folder to keep your campaigns independently of browser data. Use a different folder or port with:
 
 ```sh
 python -m warfare1944 --data-dir /path/to/my-saves --port 9000
@@ -62,7 +89,7 @@ From the repository root:
 python -m unittest discover -s warfare1944/tests -v
 ```
 
-These checks cover local startup, real WebSocket gameplay, campaign persistence across restarts, separate player profiles, reconnects, and LAN versus battles. The local launcher needs only the dependency in `requirements-local.txt`.
+These checks cover startup, real WebSocket gameplay, campaign persistence, browser-backup recovery after a host loses its files, HTTPS proxy origins, separate player profiles, reconnects, and versus battles. The launcher needs only the dependency in `requirements-local.txt`.
 
 ## Discord setup
 
@@ -77,7 +104,7 @@ It appears in the hub's menu by itself. `[p]activityhub games` lists it.
 
 ## Fair play
 
-The bot runs every battle: each squad, shot, shell, smoke screen and kill. A player's page only sends orders (deploy in a lane, a squad's order, pause, surrender), and the bot checks each one against the original's rules, including the resource points it costs. The campaign save lives on the bot, so a page cannot grant itself levels or upgrades.
+The server runs every battle: each squad, shot, shell, smoke screen and kill. A player's page sends orders (deploy in a lane, a squad's order, pause, surrender), and the server checks each one against the original's rules, including the resource points it costs. In standalone and hosted play, a browser can also restore its own validated campaign backup when no server copy or live battle exists. These backups support personal progress recovery; they are not competitive score verification. Versus matches do not use campaign upgrades.
 
 ## Credits
 
