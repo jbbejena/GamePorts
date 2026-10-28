@@ -15,7 +15,7 @@ from warfare1944.common.morale import end
 from warfare1944.standalone import COOKIE, SERVER_KEY, LocalSaves, create_app
 
 
-class StandaloneTests(unittest.IsolatedAsyncioTestCase):
+class ServerTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.path = Path(self.directory.name)
@@ -52,6 +52,8 @@ class StandaloneTests(unittest.IsolatedAsyncioTestCase):
         await ws.send_json({"newCampaign": {"side": side, "difficulty": "recruit"}})
         return await self.until(ws, lambda data: data.get("save", {}).get("side") == side)
 
+
+class StandaloneTests(ServerTestCase):
     async def test_page_assets_and_save_files_are_separate(self):
         response = await self.client.get("/")
         self.assertEqual(response.status, 200)
