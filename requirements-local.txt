@@ -1,0 +1,2 @@
+# Standalone Warfare 1944 only; Red-DiscordBot and ActivityHub are not needed.
+aiohttp>=3.9,<4

@@ -1,0 +1,17 @@
+/* The local game uses its own in-game menus; there is no outer ActivityHub menu. */
+#back {
+  display: none;
+}
+
+.local-invite {
+  width: var(--hub-people-size, 24px);
+  height: var(--hub-people-size, 24px);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: max(12px, calc(var(--hub-people-size, 24px) * 0.7));
+  line-height: 1;
+  cursor: pointer;
+}
