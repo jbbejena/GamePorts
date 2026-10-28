@@ -2,6 +2,8 @@
 
 Classic games rebuilt to play together inside Discord, as cogs (plugins) for **[Red-DiscordBot](https://github.com/Cog-Creators/Red-DiscordBot)**, a Discord bot you run yourself.
 
+**Warfare 1944 also runs locally in your browser, without Discord or ActivityHub.** See its [standalone setup](warfare1944/README.md#standalone-local-play).
+
 ![Red-DiscordBot](https://img.shields.io/badge/Red%20DiscordBot-V3.5-red?style=for-the-badge)
 ![Py](https://img.shields.io/badge/python-v3.11-orange?style=for-the-badge)
 
@@ -16,7 +18,7 @@ Classic games rebuilt to play together inside Discord, as cogs (plugins) for **[
 
 Discord lets a bot open an Activity: a small web page that runs inside a voice channel or a chat, where everyone in the call can play together. These cogs are games for that Activity.
 
-They don't run on their own. They plug into **[ActivityHub](https://github.com/vertyco/vrt-cogs/blob/main/activityhub/README.md)**, a cog in the [Vrt-Cogs](https://github.com/vertyco/vrt-cogs) repo. ActivityHub turns the bot's Activity into a menu of games, handles the Discord login and runs the web server. Each game below adds itself to that menu once it's loaded.
+The Discord versions plug into **[ActivityHub](https://github.com/vertyco/vrt-cogs/blob/main/activityhub/README.md)**, a cog in the [Vrt-Cogs](https://github.com/vertyco/vrt-cogs) repo. ActivityHub turns the bot's Activity into a menu of games, handles the Discord login and runs the web server. Each game below adds itself to that menu once it's loaded. Warfare 1944 has a standalone local launcher as an alternative.
 
 | Cog | Description |
 |-----|-------------|

@@ -37,6 +37,7 @@ venv/
 tests/
 !ageofwar/tests/
 !botarena3/tests/
+!warfare1944/tests/
 
 # Scratch and local docs
 scratch*
@@ -46,3 +47,4 @@ docs/
 test_outputs/
 TODO.md
 settings.local.json
+.local/

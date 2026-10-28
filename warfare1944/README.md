@@ -13,7 +13,58 @@ Lead the American or German army across the battlefields of 1944, for [ActivityH
 
 There are no Red currency payouts.
 
-## Setup
+## Standalone local play
+
+You can run Warfare 1944 directly in a browser without Discord, Red-DiscordBot, or ActivityHub. The same Python battle engine and browser graphics run both versions, including the campaigns, custom battles, upgrades and tutorial. Assets are included in the repository.
+
+Install **Python 3.10 or later**, then open a terminal in the **GamePorts repository root**:
+
+```sh
+python -m venv .venv
+```
+
+Activate the environment with `source .venv/bin/activate` on macOS/Linux, or `.venv\Scripts\activate` on Windows. Then:
+
+```sh
+python -m pip install -r requirements-local.txt
+python -m warfare1944
+```
+
+On macOS/Linux, use `python3` for the first command if `python` is unavailable. Open **http://127.0.0.1:8744/** in your browser and leave the terminal running. Stop the server with **Ctrl+C**. After installing the dependency, playing on the host computer does not need an internet connection.
+
+### Play on your phone
+
+Start the server with:
+
+```sh
+python -m warfare1944 --host 0.0.0.0
+```
+
+Connect your phone to the same Wi-Fi as the computer. In Safari or another mobile browser, open the **Phone on the same Wi-Fi** address printed in the terminal, such as `http://192.168.1.50:8744/`. Allow the server through your computer's firewall for your private network if prompted. If the printed address is from a VPN or virtual adapter, use your computer's Wi-Fi IP address instead.
+
+The computer runs the battles and must stay on. The phone works in either orientation; landscape gives a larger battlefield. Separate browsers/devices get separate local player profiles, and can use the existing Versus and Watch menus together. There is no Discord account or sign-in step.
+
+### Campaign saves
+
+Progress and upgrades are saved as JSON files in **`.local/warfare1944/`** inside the repository. These files are excluded from Git. Back up that folder to keep your campaigns. Use a different folder or port with:
+
+```sh
+python -m warfare1944 --data-dir /path/to/my-saves --port 9000
+```
+
+A browser cookie identifies your campaign. Use the same browser profile and server hostname when returning; clearing its cookies creates a new profile. A phone and a computer have separate profiles. Closing the game pauses a solo battle for up to ten minutes while the server stays running. Restarting the server keeps campaign progress but replays the current unfinished mission.
+
+### Development checks
+
+From the repository root:
+
+```sh
+python -m unittest discover -s warfare1944/tests -v
+```
+
+These checks cover local startup, real WebSocket gameplay, campaign persistence across restarts, separate player profiles, reconnects, and LAN versus battles. The local launcher needs only the dependency in `requirements-local.txt`.
+
+## Discord setup
 
 Warfare 1944 needs ActivityHub 0.10.0 or later, loaded and set up (see its README). Then:
 
