@@ -30,6 +30,56 @@
     <div id="people"></div>
     <!-- Shown under the stage when the phone is upright -->
     <p id="turn" hidden>Turn your phone sideways for a bigger view</p>
+    <section id="mobile-controls" aria-label="Battle controls" hidden>
+      <div class="mobile-header">
+        <div class="mobile-counts"><strong id="mobile-resources">0 RP</strong><span id="mobile-clock">00:00</span></div>
+        <button type="button" id="mobile-upgrades">Upgrades</button>
+        <button type="button" id="mobile-players">Players</button>
+        <button type="button" id="mobile-menu">Menu</button>
+      </div>
+      <div id="mobile-units" class="mobile-strip" aria-label="Deploy units"></div>
+      <div id="mobile-lanes" class="mobile-strip" aria-label="Choose deployment lane" hidden></div>
+      <div id="mobile-orders" class="mobile-strip" aria-label="Squad orders" hidden></div>
+      <div class="mobile-detail">
+        <select id="mobile-squads" aria-label="Select your squad"><option value="">Select squad</option></select>
+        <p id="mobile-instruction"></p>
+        <button type="button" id="mobile-deploy" hidden>Deploy</button>
+        <button type="button" id="mobile-cancel" hidden>Cancel</button>
+      </div>
+    </section>
+    <details id="campaign-files" hidden>
+      <summary>Campaign saves</summary>
+      <div class="campaign-file-panel">
+        <div class="campaign-file-actions">
+          <button type="button" id="campaign-export" disabled>Export campaign</button>
+          <button type="button" id="campaign-import" disabled>Import campaign</button>
+        </div>
+        <input type="file" id="campaign-file" accept=".json,application/json" hidden />
+        <p id="campaign-import-hint"></p>
+        <p id="campaign-file-note" role="status"></p>
+      </div>
+    </details>
+    <section id="loading" class="recovery-cover" aria-label="Loading game" aria-busy="true">
+      <div class="recovery-panel">
+        <h1>Warfare 1944</h1>
+        <p id="loading-line" role="status">Starting the game…</p>
+        <progress id="loading-progress" aria-label="Artwork loaded"></progress>
+        <div class="recovery-actions">
+          <button type="button" id="loading-retry" hidden>Retry download</button>
+          <button type="button" id="loading-reload" hidden>Reload game</button>
+        </div>
+      </div>
+    </section>
+    <section id="recovery" class="recovery-cover" role="dialog" aria-modal="true" aria-labelledby="recovery-title" aria-describedby="recovery-line" hidden>
+      <div class="recovery-panel">
+        <h1 id="recovery-title"></h1>
+        <p id="recovery-line"></p>
+        <div class="recovery-actions">
+          <button type="button" id="recovery-primary">Retry</button>
+          <button type="button" id="recovery-menu">Return to menu</button>
+        </div>
+      </div>
+    </section>
     <script type="module" src="game.js"></script>
   </body>
 </html>

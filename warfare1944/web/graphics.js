@@ -6,6 +6,7 @@ export function graphicsProfile() {
   const compact = navigator.maxTouchPoints > 0 || window.matchMedia("(any-pointer: coarse)").matches;
   return {
     compact,
+    artBase: compact ? "art/compact" : "art",
     atlasSize: compact ? ATLAS_SIZE / 2 : ATLAS_SIZE,
     atlasResolution: compact ? 0.5 : 1,
     resolution: compact ? 1 : Math.min(window.devicePixelRatio || 1, 2),

@@ -217,7 +217,7 @@ export class Field {
     this.midGround = [];
     this.covers = [];
     this.cameraSent = { x: null, at: 0 };
-    this.pointer = { x: 0, y: 0, inside: false, touch: false, down: false };
+    this.pointer = { x: 0, y: 0, inside: false, touch: false, down: false, id: null };
     this.drag = null;
     this.arrow = null;
     this.pausedText = null;
@@ -338,7 +338,7 @@ export class Field {
     // Updates that come while the art loads wait, so none of their events is lost
     this.waiting = { id: battle.id, updates: [] };
     if (!this.world || this.battle?.id !== battle.id) {
-      await this.page.lib.need(this.artFor(battle.map));
+      await this.page.loadArt(this.artFor(battle.map));
       if (load !== this.loads || this.page.screen !== "battle") {
         return;
       }
@@ -357,6 +357,7 @@ export class Field {
     for (const fn of this.loadListeners) {
       fn(battle);
     }
+    this.page.recovery?.artworkReady();
   }
 
   artFor(map) {
@@ -627,6 +628,7 @@ export class Field {
 
   clear() {
     const page = this.page;
+    this.cancelInput();
     for (const fn of this.clearListeners) {
       fn();
     }
@@ -778,9 +780,13 @@ export class Field {
     const canvas = this.page.app.canvas;
     canvas.addEventListener("pointermove", (e) => this.pointerMoved(e));
     canvas.addEventListener("pointerdown", (e) => this.pointerDown(e));
-    for (const name of ["pointerup", "pointercancel"]) {
-      canvas.addEventListener(name, (e) => this.pointerUp(e));
-    }
+    const release = (e) => {
+      if (!this.pointer.down || e.pointerId !== this.pointer.id) return;
+      if (e.type === "pointercancel") this.cancelInput();
+      else this.pointerUp(e);
+    };
+    for (const name of ["pointerup", "pointercancel"]) window.addEventListener(name, release);
+    canvas.addEventListener("lostpointercapture", () => { if (this.pointer.down) this.cancelInput(); });
     canvas.addEventListener("pointerleave", () => {
       this.pointer.inside = false;
     });
@@ -790,13 +796,14 @@ export class Field {
   readPointer(e) {
     const box = this.page.app.canvas.getBoundingClientRect();
     const pointer = this.pointer;
-    pointer.x = ((e.clientX - box.left) * STAGE_WIDTH) / box.width;
-    pointer.y = ((e.clientY - box.top) * STAGE_HEIGHT) / box.height;
+    pointer.x = (e.clientX - box.left) / this.page.world.scale.x;
+    pointer.y = (e.clientY - box.top) / this.page.world.scale.y;
     pointer.touch = e.pointerType === "touch";
     pointer.inside = true;
   }
 
   pointerMoved(e) {
+    if (this.pointer.down && this.pointer.id !== e.pointerId) return;
     this.readPointer(e);
     const drag = this.drag;
     if (!drag || !this.world) {
@@ -812,18 +819,33 @@ export class Field {
 
   // A press on the field above the HUD may become a drag that scrolls it
   pointerDown(e) {
+    if (this.pointer.down || e.isPrimary === false || this.page.recovery?.kind) return;
     this.readPointer(e);
     this.pointer.down = true;
+    this.pointer.id = e.pointerId;
     if (this.world && this.pointer.y < HUD_TOP) {
       this.drag = { from: this.pointer.x, worldX: this.world.x, moving: false };
     }
   }
 
   pointerUp(e) {
+    if (this.pointer.down && this.pointer.id !== e.pointerId) return;
     this.readPointer(e);
     this.pointer.down = false;
+    this.pointer.id = null;
     this.pointer.inside = !this.pointer.touch;
     this.drag = null;
+  }
+
+  // Browser interruptions release gestures without synthesizing a click/order.
+  cancelInput() {
+    Object.assign(this.pointer, { down: false, inside: false, id: null });
+    this.drag = null;
+    this.hud.pressed = null;
+    this.orders.touchDown = null;
+    this.orders.cancel();
+    this.hideArrow();
+    if (this.page?.lib) this.page.lib.drag = null;
   }
 
   // How far a press moves, in stage pixels, before it is a drag and not a tap

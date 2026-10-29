@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import { limitPageLoads } from "../web/graphics.js";
 import { ImageSource, Rectangle, Sprite, Texture } from "../web/vendor/pixi.min.mjs";
 
@@ -59,4 +60,39 @@ test("a rejected download does not strand queued pages or prevent a retry", asyn
   await assert.rejects(first, /Interrupted download/);
   assert.equal(await next, 1);
   assert.equal(await load(0), 0);
+});
+
+test("compact menu art is separated from mission art and preserves every placement", async () => {
+  const original = JSON.parse(await readFile(new URL("../web/art/flash.json", import.meta.url)));
+  const compact = JSON.parse(await readFile(new URL("../web/art/compact/flash.json", import.meta.url)));
+  const pending = [compact.exports.menu];
+  const seen = new Set();
+  const pages = new Set();
+  while (pending.length) {
+    const id = pending.pop();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const piece of compact.atlas.shapes[id] ?? []) pages.add(piece[0]);
+    for (const frame of compact.sprites[id]?.f ?? []) {
+      for (const operation of frame) if (operation[1]) pending.push(operation[1]);
+    }
+    for (const [child] of compact.buttons?.[id] ?? []) pending.push(child);
+  }
+  const menuPages = [...pages];
+  assert.ok(menuPages.length < 16, "the menu must not preload most of the battle's textures");
+  assert.ok(compact.atlas.pages.length <= original.atlas.pages.length, "keep the previous total decoded-pixel budget");
+  assert.ok(menuPages.every(index => compact.atlas.pages[index].startsWith("menu-")));
+  assert.ok(compact.atlas.pages.some(name => name.startsWith("battle-")));
+  assert.deepEqual(Object.keys(compact.atlas.shapes), Object.keys(original.atlas.shapes));
+  for (const [id, pieces] of Object.entries(original.atlas.shapes)) {
+    assert.equal(compact.atlas.shapes[id].length, pieces.length);
+    pieces.forEach((piece, index) => {
+      const packed = compact.atlas.shapes[id][index];
+      assert.deepEqual(packed.slice(3), piece.slice(3), `${id}: size and placement unchanged`);
+      assert.ok(packed[1] >= 0 && packed[2] >= 0 && packed[1] + packed[3] <= 2048 && packed[2] + packed[4] <= 2048);
+    });
+  }
+  const { atlas: ignoredOriginal, ...originalDefinitions } = original;
+  const { atlas: ignoredCompact, ...compactDefinitions } = compact;
+  assert.deepEqual(compactDefinitions, originalDefinitions);
 });

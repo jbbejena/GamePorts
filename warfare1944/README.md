@@ -32,9 +32,26 @@ The Python server, graphics, and WebSocket connections all use that one address.
 
 Render's free service sleeps after fifteen minutes without inbound traffic. Opening it again can take about a minute. The first visit after a sleep may show Render's loading page before the game opens.
 
-Free-host server files can disappear on a sleep, restart or redeploy. The browser therefore keeps a campaign backup and sends it back **only when the server has no saved campaign**. Existing server progress is kept. Use the same browser and website address when returning, and keep its cookies and website data. Backups belong to that browser profile; they do not sync to another phone. An unfinished live battle starts again from its mission after the host restarts.
+Free-host server files can disappear on a sleep, restart or redeploy. The browser therefore keeps a campaign backup and sends it back **only when the server has no saved campaign**. Existing server progress is kept. Use the same browser and website address when returning, and keep its cookies and website data. Backups belong to that browser profile; use **Campaign saves** on the main menu to export a file to another browser or phone. An unfinished live battle starts again from its mission after the host restarts.
 
-Touch devices use 1024-pixel atlas sheets instead of the original 2048-pixel sheets, decoded one at a time. This reduces retained artwork pixels by 75% and avoids simultaneous full-size image decodes during campaign and mission loading. Artwork placements, button hit areas and gameplay coordinates keep their original size. Touch devices also use a 1x drawing buffer without multisample antialiasing to reduce GPU memory.
+Touch devices download prebuilt, lossless 1024-pixel WebP sheets, decoded one at a time. Menu artwork is packed separately from battle-only artwork: the menu needs 9 sheets (36 MiB of decoded pixels and about 4.1 MB of files), instead of 31 full-source sheets (43.7 MB of files). The complete compact artwork is 26.6 MB across 32 sheets, compared with 47.4 MB across 33 original sheets. These figures describe artwork only, excluding fonts, code and metadata. Original source artwork, placements, button hit areas and gameplay coordinates are retained. Touch devices also use a 1x drawing buffer without multisample antialiasing. Desktop retains the original artwork.
+
+An artwork progress bar counts actual completed sheets. **Retry download** retries failed pages using the existing cache and decode limit. An interrupted solo mission download asks the server to pause; after retrying, close the battle menu to resume. Graphics loss offers **Reload game** and **Return to menu**. Reconnecting never replays deployments, orders or purchases.
+
+### Phone battle controls
+
+The touch dock has buttons at least 44 CSS pixels high. Tap a unit to read its description, then choose **Top lane**, **Middle lane** or **Bottom lane** (or tap the battlefield). Select your own squad on the field or with **Select squad** to show its orders. A support order is aimed by tapping a target and then tapping its marker again to confirm. **Cancel** clears deployment/aiming; **Deploy** returns from squad orders to unit selection. Scroll the unit strip to reach more units, and drag the battlefield to pan.
+
+The original ground/morale bars and mission clock stay above the battlefield. The dock uses the existing HUD and order owners; the server still checks every cost, cooldown, ownership rule, target and action. Menu/upgrade screens retain their original layout. After switching apps or hiding a solo battle, the page requests a server pause and requires an explicit resume. Versus battles continue for the other player. Interrupted drags and cancelled touches do not send an order.
+
+### Export and import a campaign
+
+1. Return to the main menu and open **Campaign saves**.
+2. Choose **Export campaign** and keep the JSON file in Files/Downloads or transfer it to another device.
+3. In the destination browser, open the same game, open **Campaign saves**, and choose **Import campaign**.
+4. Choose **Continue Campaign** after the server confirms the import.
+
+Import requires a profile without an existing campaign and no active battle. It never overwrites another campaign. The server validates mission, XP, levels, upgrades and career totals through the existing backup validator, under the same player lock. Identical repeated imports are idempotent; two simultaneous different imports keep the first accepted campaign. The version-1 file envelope is `{ "format": "warfare1944.campaign", "version": 1, "campaign": { ... } }`, limited to 8 KiB on upload. It contains durable campaign fields, with no browser profile identifier or view-only unlock lists. Storage on the server and the automatic browser-backup format have not changed; no migration is needed. Files support personal progress portability, not competitive score verification. Live battle checkpoints are not included.
 
 ### Hosting configuration
 
@@ -90,9 +107,21 @@ From the repository root:
 ```sh
 python -m unittest discover -s warfare1944/tests -v
 node --test warfare1944/tests/test_graphics.mjs
+node --test warfare1944/tests/test_recovery.mjs
 ```
 
-These checks cover startup, real WebSocket gameplay, campaign persistence, browser-backup recovery after a host loses its files, HTTPS proxy origins, separate player profiles, reconnects, versus battles, and the graphics loader's concurrency and retry behavior. Node is needed only for the graphics checks; the launcher needs only the dependency in `requirements-local.txt`.
+These checks cover startup, real WebSocket gameplay, persistence, browser-backup recovery, portable-save validation/isolation/concurrency, HTTPS proxy origins, separate profiles, reconnects, versus, graphics geometry/concurrency/retries, and browser recovery policy. Node is needed only for JavaScript checks; the launcher needs only the dependency in `requirements-local.txt`. Browser emulation is separate evidence from physical iPhone Safari or Home Screen testing.
+
+### Rebuilding compact artwork
+
+The original `web/art/atlas-*.png` and `web/art/flash.json` own the artwork. Regenerate their checked-in derivatives with:
+
+```sh
+python -m pip install -r warfare1944/tools/requirements.txt
+python warfare1944/tools/build_compact_art.py
+```
+
+The deterministic packer preserves every shape's logical size/placement, copies the original sprites/buttons/text definitions, groups menu dependencies separately, and generates `web/art/compact/flash.json` plus lossless WebP sheets. Do not hand-edit these derivatives. Pillow is a build dependency only; it is not needed to run the server. No bundle, service worker or cache-version bump is required for these source assets.
 
 ## Discord setup
 

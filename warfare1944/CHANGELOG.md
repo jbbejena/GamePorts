@@ -1,5 +1,12 @@
 # Warfare 1944 Changelog
 
+## Unreleased
+
+- Prebuilt compact phone artwork, separate menu/battle sheets, and visible artwork progress with Retry.
+- Larger touch deployment, lane, squad and order controls, with readable unit descriptions and the original top bars.
+- Graphics/connection recovery actions and interruption-safe solo pause/resume without replaying orders.
+- Export/import of validated campaign files between standalone browser profiles, preserving existing saves.
+
 ## 0.2.0
 
 Needs ActivityHub 0.10.0 or later.

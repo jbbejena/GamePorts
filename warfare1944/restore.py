@@ -23,7 +23,7 @@ def validated_backup(value):
     if not isinstance(value, dict) or set(value) != FIELDS:
         return None
     side = value["side"]
-    if side not in SIDES or value["difficulty"] not in DIFFICULTIES:
+    if type(side) is not str or side not in SIDES or type(value["difficulty"]) is not str or value["difficulty"] not in DIFFICULTIES:
         return None
     if not whole(value["mission"], 1, campaign.LAST_MISSION):
         return None
@@ -54,3 +54,12 @@ def validated_backup(value):
         elif not whole(number, 0, MAX_COUNT):
             return None
     return copy.deepcopy(value)
+
+
+def campaign_from_file(value):
+    """Versioned portable envelope; the existing backup validator owns its data."""
+    if not isinstance(value, dict) or set(value) != {"format", "version", "campaign"}:
+        return None
+    if value["format"] != "warfare1944.campaign" or type(value["version"]) is not int or value["version"] != 1:
+        return None
+    return validated_backup(value["campaign"])

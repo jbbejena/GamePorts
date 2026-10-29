@@ -100,7 +100,7 @@ export function keepMenu(next) {
 
 // The menu clip, made if it is not there, showing the part for this screen
 export async function loadMenu(screen) {
-  await page.lib.need([page.lib.exported("menu")]);
+  await page.loadArt([page.lib.exported("menu")]);
   const menu = page.attach("menu", DEPTH_MENU, "menu");
   const shown = PARTS[screen];
   for (const [name, part] of Object.entries(menu.named)) {
@@ -373,7 +373,7 @@ function sizeTo(clip, width, height) {
 // showDialogBox (F6:141-216): a heading and some words over a darkened screen, with one, two or three buttons. Each
 // button closes the dialog, after a click and its onPress
 export async function dialog({ heading, body, buttons = [] }) {
-  await page.lib.need([page.lib.exported("dialogBox")]);
+  await page.loadArt([page.lib.exported("dialogBox")]);
   const box = page.attach("dialogBox", DEPTH_DIALOG, "dialogBox");
   const [black, backing, texts] = ["blackOut", "backing", "textBoxes"].map((name) => box.child(name));
   const slots = ["button1", "button2", "button3"].map((name) => box.child(name));
@@ -445,7 +445,7 @@ function closeDialog(box) {
 // showQuickMessage (F6:380-403): a line of words on a dark plate near the top of the screen, or in the middle and
 // bigger, that fades in and out. It sits in the HUD when there is one
 export async function quickMessage(text, position) {
-  await page.lib.need([page.lib.exported("dialog_quickMessage")]);
+  await page.loadArt([page.lib.exported("dialog_quickMessage")]);
   const hud = page.root.children.find((child) => child.label === "hud" && !child.destroyed && child.attach);
   const note = page.lib.makeExported("dialog_quickMessage");
   if (hud) {
@@ -476,7 +476,7 @@ export async function quickMessage(text, position) {
 // showSavingGameIcon (F6:1-12): "GAME PROGRESS SAVED" shows for its 85 frames and takes itself away. The upgrade screen's
 // saves (an upgrade bought, Done) make the icon invisible instead (faint). A new icon replaces one still showing
 export async function savedIcon(faint = false) {
-  await page.lib.need([page.lib.exported("saveAnim")]);
+  await page.loadArt([page.lib.exported("saveAnim")]);
   const icon = page.attach("saveAnim", DEPTH_SAVE_ICON, "saveAnim");
   icon.scale.set(SAVE_ICON.scale);
   icon.alpha = faint ? 0 : SAVE_ICON.alpha;

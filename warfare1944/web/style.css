@@ -57,6 +57,7 @@
   /* The hub's people button and its arrival notes take the olive */
   --accent: #5d6648;
   --on-accent: #ffffff;
+  --controls-height: 0px;
   color-scheme: dark;
 }
 
@@ -83,7 +84,7 @@ body {
   position: fixed;
   top: var(--safe-top);
   right: var(--safe-right);
-  bottom: var(--safe-bottom);
+  bottom: calc(var(--safe-bottom) + var(--controls-height));
   left: var(--safe-left);
   display: flex;
   align-items: center;
@@ -100,7 +101,7 @@ body {
   position: fixed;
   z-index: 2;
   left: 50%;
-  bottom: calc(var(--safe-bottom) + 12px);
+  bottom: calc(var(--safe-bottom) + var(--controls-height) + 12px);
   transform: translateX(-50%);
   max-width: calc(100% - 32px);
   margin: 0;
@@ -450,4 +451,140 @@ body[data-aiming] #stage canvas {
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* Touch controls retain the original olive metal/parchment palette and fonts.
+   The dock replaces only the small canvas controls; the field and its top bars
+   retain their original coordinates. */
+#mobile-controls {
+  position: fixed;
+  z-index: 4;
+  bottom: var(--safe-bottom);
+  left: var(--safe-left);
+  right: var(--safe-right);
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border-top: 1px solid var(--olive);
+  background: #1d241b;
+  color: var(--letters);
+  font: 16px "DIN", "Arial Narrow", Arial, sans-serif;
+}
+
+#mobile-controls button,
+#mobile-controls select,
+.recovery-actions button,
+.campaign-file-actions button,
+#campaign-files summary {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--olive);
+  border-radius: 3px;
+  background: #2b3320;
+  color: var(--letters);
+  font: inherit;
+  line-height: 1.15;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#mobile-controls button:disabled,
+#mobile-controls select:disabled,
+.campaign-file-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#mobile-controls button:not(:disabled):active,
+#mobile-controls button[aria-pressed="true"] {
+  background: #4c5838;
+}
+
+.mobile-header,
+.mobile-detail,
+.mobile-strip,
+.campaign-file-actions,
+.recovery-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobile-header { margin-bottom: 4px; }
+.mobile-counts { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mobile-counts strong { font-variant-numeric: tabular-nums; }
+.mobile-counts span { font-size: 14px; font-variant-numeric: tabular-nums; }
+#mobile-controls .mobile-header button { padding-inline: 9px; }
+.mobile-strip {
+  box-sizing: border-box;
+  min-height: 54px;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x;
+  scrollbar-width: thin;
+  scrollbar-color: var(--olive) #1d241b;
+  padding-bottom: 4px;
+}
+.mobile-strip button { flex: 0 0 auto; min-width: 96px; white-space: pre-line; }
+#mobile-lanes button { flex: 1; }
+.mobile-detail { min-height: 44px; }
+.mobile-detail select { width: 140px; min-width: 0; flex: 0 1 140px; }
+.mobile-detail p { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
+body[data-mobile-battle] #people { visibility: hidden; }
+
+#campaign-files {
+  position: fixed;
+  z-index: 5;
+  bottom: calc(var(--safe-bottom) + 4px);
+  left: calc(var(--safe-left) + 8px);
+  width: min(400px, calc(100% - var(--safe-left) - var(--safe-right) - 16px));
+  color: var(--letters);
+  font: 16px "DIN", "Arial Narrow", Arial, sans-serif;
+}
+#campaign-files summary { width: max-content; }
+.campaign-file-panel {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--olive);
+  background: #1d241b;
+}
+.campaign-file-actions button { flex: 1; }
+.campaign-file-panel p { font-size: 14px; line-height: 1.4; margin: 10px 0 0; }
+.campaign-file-panel p:empty { display: none; }
+
+.recovery-cover {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left));
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.94);
+  overflow-y: auto;
+  touch-action: pan-y;
+  color: var(--letters);
+  font: 16px "DIN", "Arial Narrow", Arial, sans-serif;
+}
+#recovery { z-index: 11; }
+.recovery-panel { width: min(100%, 440px); }
+.recovery-panel h1 { margin: 0 0 16px; font: 28px "AFBattersea", "DIN-Bold", sans-serif; }
+.recovery-panel p { line-height: 1.5; margin: 0 0 20px; }
+.recovery-panel progress { display: block; width: 100%; height: 16px; margin-bottom: 16px; accent-color: var(--olive); }
+.recovery-actions { flex-wrap: wrap; }
+.recovery-actions button:first-child { background: #4c5838; }
+
+@media (orientation: landscape) and (max-height: 600px) {
+  #mobile-controls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 8px;
+  }
+  .mobile-header { grid-column: 1; grid-row: 1; margin-bottom: 0; }
+  .mobile-counts { min-width: 60px; }
+  .mobile-strip { grid-column: 2; grid-row: 1; }
+  .mobile-detail { grid-column: 1 / -1; grid-row: 2; }
 }

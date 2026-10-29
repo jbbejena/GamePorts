@@ -77,6 +77,7 @@ const WORDS = {
   suppress: "Suppressing Fire",
   smokeRounds: "Smoke Mortar Rounds - 100 RP",
 };
+export const orderWords = (action) => WORDS[action] ?? action;
 const SMOKE_COST = 50;
 // What "In cover behind ..." calls each cover (the cover_* descriptions, F6:10783-10829)
 const COVER_WORDS = {
@@ -185,7 +186,7 @@ export class Orders {
 
   // True when an order may go to the bot now: not a watcher, not paused or over, not under the in-battle menu
   get ready() {
-    return this.interactive && !this.field.paused && !this.field.ending && !this.field.panels.menu;
+    return this.interactive && !this.field.paused && !this.field.ending && !this.field.panels.menu && !this.page.recovery?.kind;
   }
 
   // The clips this module attaches, loaded with the battlefield's

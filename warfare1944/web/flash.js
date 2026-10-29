@@ -703,8 +703,16 @@ export class Library {
   }
 
   // Resolves once every page those characters draw from has loaded
-  need(ids) {
-    return Promise.all([...this.pagesFor(ids)].map((index) => this.page(index)));
+  need(ids, progress = () => {}) {
+    const pages = [...this.pagesFor(ids)];
+    let done = pages.filter((index) => this.textures[index]).length;
+    progress(done, pages.length);
+    return Promise.all(pages.map(async (index) => {
+      const already = Boolean(this.textures[index]);
+      const texture = await this.page(index);
+      if (!already) progress(++done, pages.length);
+      return texture;
+    }));
   }
 
   piecesOf(id) {

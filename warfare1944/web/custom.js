@@ -380,7 +380,7 @@ async function enter(forVersus) {
   versus = forVersus;
   const had = menuClip() !== null;
   const menu = menuClip() ?? (await menus.loadMenu("custom"));
-  await page.lib.need([NOTE_BACKING, WHO_BUTTON]);
+  await page.loadArt([NOTE_BACKING, WHO_BUTTON]);
   const skirmish = menu.child("skirmish");
   if (!skirmish.wired) {
     skirmish.wired = true;
