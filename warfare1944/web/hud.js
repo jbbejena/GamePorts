@@ -87,6 +87,10 @@ const UNITS = [
   { name: "Officer", desc: "Has fire support. \rProvides morale boost." },
   { name: "Sherman Tank", german: "Panzer III", desc: "Strong vs All. \rWeak vs Fire support." },
 ];
+export function unitWords(side, index) {
+  const unit = UNITS[index];
+  return { name: (side === "german" && unit.german) || unit.name, desc: unit.desc.replace(/\r/g, " ") };
+}
 const CLICK = "sound_interface_click";
 const ROLL_OVER = "sound_interface_rollOver";
 
@@ -373,7 +377,7 @@ export class Hud {
   // The press of a slot (onPress, onRelease and onReleaseOutside all do the same): a ready slot becomes the unit to
   // deploy, and a different one picked next swaps it
   press(entry) {
-    if (!this.interactive || !entry.unlocked || !entry.ready || this.field.paused) {
+    if (!this.interactive || !entry.unlocked || !entry.ready || this.field.paused || this.page.recovery?.kind) {
       return;
     }
     this.startDeploy(entry);
@@ -480,6 +484,14 @@ export class Hud {
     if (this.deployMode === null || !this.interactive || moved) {
       return;
     }
+    this.deployLane(lane);
+  }
+
+  // Both the canvas lanes and the phone's large lane buttons use this owner.
+  deployLane(lane) {
+    if (this.deployMode === null || !this.interactive || this.field.paused || this.field.ending ||
+        this.field.panels.menu || this.page.recovery?.kind || !this.zones[lane - 1]) return;
+    const zone = this.zones[lane - 1];
     const blocked = this.blocked(lane);
     const seconds = blocked ? CANCEL_FADE_SECONDS : DEPLOY_FADE_SECONDS;
     zone.alpha = ZONE_PRESSED / 100;
@@ -487,7 +499,10 @@ export class Hud {
       tweens.colorTo(zone, ZONE_BLOCKED, 0);
     }
     tweens.alphaTo(zone, 0, seconds);
-    this.page.send({ deploy: [this.deployMode, lane] });
+    if (!this.page.send({ deploy: [this.deployMode, lane] })) {
+      this.page.toast("Not connected. Reconnect before deploying.");
+      return;
+    }
     this.endDeploy(seconds);
   }
 

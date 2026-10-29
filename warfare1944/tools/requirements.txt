@@ -1,0 +1,2 @@
+# Only needed to regenerate the checked-in compact artwork.
+Pillow>=10,<13

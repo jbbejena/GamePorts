@@ -261,7 +261,7 @@ async function enterUpgrades() {
     return;
   }
   const menu = menuClip() ?? (await menus.loadMenu("map"));
-  await page.lib.need([page.lib.exported("upgrades")]);
+  await page.loadArt([page.lib.exported("upgrades")]);
   menu.child("upgrades")?.removeMovieClip();
   const clip = menu.attach(page.lib.makeExported("upgrades"), "upgrades");
   shown = { clip, holder: null };
@@ -293,7 +293,7 @@ async function openOverBattle() {
   if (shown || !save) {
     return;
   }
-  await page.lib.need([page.lib.exported("blankMovie"), page.lib.exported("upgrades")]);
+  await page.loadArt([page.lib.exported("blankMovie"), page.lib.exported("upgrades")]);
   if (shown) {
     return;
   }

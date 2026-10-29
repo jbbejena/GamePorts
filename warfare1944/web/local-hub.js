@@ -1,8 +1,8 @@
 // The standalone transport implements the small interface game.js uses from ActivityHub.
 // The Python server runs battles; browser backups keep campaigns across free-host restarts.
 // All requests use this page's own origin, both on a LAN and on an HTTPS host.
+import { campaignData } from "./campaign-save.js";
 let hub;
-const SAVE_FIELDS = ["side", "difficulty", "mission", "xp", "level", "points", "upgrades", "career", "finished"];
 
 function backupKey(player) {
   return `warfare1944.campaign.${player.id}`;
@@ -18,7 +18,7 @@ function readBackup(player) {
 
 function keepBackup(player, save) {
   try {
-    const value = Object.fromEntries(SAVE_FIELDS.map(key => [key, save[key]]));
+    const value = campaignData(save);
     localStorage.setItem(backupKey(player), JSON.stringify(value));
   } catch (error) {
     console.warn("Warfare 1944 could not keep a browser save backup.", error);

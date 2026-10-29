@@ -387,7 +387,7 @@ function refresh() {
 async function enter(kind) {
   const mine = { kind, menu: null, buttons: {}, list: document.getElementById("together-list"), unsubscribe: null };
   state = mine;
-  await page.lib.need([BACKING, BUTTON]);
+  await page.loadArt([BACKING, BUTTON]);
   const had = menuClip();
   const menu = had ?? (await menus.loadMenu(kind));
   if (state !== mine) {

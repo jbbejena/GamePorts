@@ -18,7 +18,7 @@ from urllib.parse import urlsplit
 from aiohttp import WSMsgType, web
 
 from .engine import WarfareGame
-from .restore import validated_backup
+from .restore import campaign_from_file, validated_backup
 
 WEB_DIR = Path(__file__).parent / "web"
 DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / ".local" / "warfare1944"
@@ -124,17 +124,29 @@ class LocalServer:
                 raise ValueError("The public URL must be an http(s) origin, such as https://game.onrender.com")
             self.public_origin = f"{address.scheme}://{address.netloc.lower()}"
 
-    async def restore(self, conn, value):
+    async def restore(self, conn, value, *, transfer=False):
         """Recover an absent ephemeral-host save, without overwriting newer server progress."""
         player_id = conn.ctx.author.id
+        restored = campaign_from_file(value) if transfer else validated_backup(value)
         async with self.game.lock(player_id):
             storage = self.game.config.user_from_id(player_id)
             existing = await storage.campaign()
-            restored = validated_backup(value) if existing is None else None
-            if restored is not None and self.game.running(player_id) is None:
+            ok = False
+            if restored is None:
+                message = "This campaign file is invalid or uses an unsupported version. Your save is unchanged."
+            elif self.game.running(player_id) is not None:
+                message = "Finish or quit your active battle before importing. Your save is unchanged."
+            elif existing is not None and existing != restored:
+                message = "This browser already has a campaign. Import into an empty browser profile to keep both saves."
+            else:
+                ok = True
+                message = "Campaign imported. Choose Continue Campaign to play."
+            if ok and existing is None:
                 await storage.campaign.set(restored)
                 existing = restored
             await self.game.send_save(player_id, existing)
+            if transfer:
+                await conn.send({"campaignTransfer": {"ok": ok, "message": message}})
 
     async def people(self):
         players = {
@@ -229,6 +241,8 @@ async def websocket(request):
                     continue
                 if isinstance(data, dict) and set(data) == {"restoreCampaign"}:
                     await server.restore(conn, data["restoreCampaign"])
+                elif isinstance(data, dict) and set(data) == {"importCampaign"}:
+                    await server.restore(conn, data["importCampaign"], transfer=True)
                 else:
                     await server.game.message(conn.ctx, conn, data)
             elif message.type == WSMsgType.ERROR:

@@ -10,6 +10,10 @@ import { backToMenu, connect } from "activityhub";
 import { Application, Container, ImageSource, Rectangle, Texture } from "./vendor/pixi.min.mjs";
 import { Library, setTextResolution } from "./flash.js";
 import { atlasBitmap, graphicsProfile, limitPageLoads } from "./graphics.js";
+import { Loading } from "./loading.js";
+import { Recovery } from "./recovery.js";
+import { MobileControls } from "./mobile.js";
+import { CampaignFiles } from "./campaign-files.js";
 import * as campaign from "./campaign.js";
 import * as custom from "./custom.js";
 import { field } from "./field.js";
@@ -49,7 +53,6 @@ const NAME_MOST = 16;
 const RECONNECTING = "Reconnecting...";
 const BATTLE_ENDED = "That battle has ended.";
 const OFFLINE = "Open this in Discord to play.";
-const NO_GRAPHICS = "This device couldn't start the game's graphics.";
 const CLOSED_BECAUSE = {
   4003: "Warfare 1944 was turned off in this server.",
   4029: "This page sent too many messages, so the bot disconnected it.",
@@ -139,6 +142,10 @@ function $(id) {
 // ---------- Starting ----------
 
 async function start() {
+  page.recovery = new Recovery(page, reconnect);
+  page.loading = new Loading((error) => page.recovery.artworkFailed(error));
+  page.mobile = new MobileControls(page);
+  page.campaignFiles = new CampaignFiles(page);
   $("back").addEventListener("click", backToMenu);
   window.addEventListener("error", (e) => {
     // The browser's note that a resize landed while the stage was being fitted is a warning, not a fault
@@ -172,18 +179,22 @@ async function start() {
     await buildStage();
   } catch (e) {
     console.error("Warfare 1944: couldn't start drawing", e);
-    toast(NO_GRAPHICS, 0);
+    page.loading.ready();
+    page.recovery.show(e.artDownload ? "startup" : "graphics");
     $("people").dataset.placed = "corner";
     return;
   }
+  page.loading.ready();
   await show("main");
   const hub = await hubReady;
   if (hub instanceof Error) {
     page.offline = true;
     toast(hub.message, 0);
+    page.recovery.show("startup");
     return;
   }
   page.hub = hub;
+  page.campaignFiles.refresh();
   page.offline = hub.offline;
   report();
   if (hub.offline) {
@@ -193,16 +204,22 @@ async function start() {
   goLive();
 }
 
-async function download(url) {
-  const resp = await fetch(url);
-  if (!resp.ok) {
-    throw new Error(`${url}: ${resp.status}`);
+async function download(url, kind) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+  try {
+    const resp = await fetch(url, { signal: controller.signal });
+    if (!resp.ok) throw new Error(`${url}: ${resp.status}`);
+    return await resp[kind]();
+  } catch (error) {
+    throw Object.assign(new Error(`Couldn’t download ${url}`, { cause: error }), { artDownload: true });
+  } finally {
+    clearTimeout(timeout);
   }
-  return resp;
 }
 
 async function loadPage(index) {
-  const blob = await (await download(`art/${page.lib.data.atlas.pages[index]}`)).blob();
+  const blob = await download(`${page.graphics.artBase}/${page.lib.data.atlas.pages[index]}`, "blob");
   // Browsers don't premultiply a decoded bitmap's colors on upload, so it is decoded premultiplied, which is how
   // Pixi blends; the art's see-through panels would otherwise draw solid
   const bitmap = await atlasBitmap(blob, page.graphics.atlasSize);
@@ -217,7 +234,7 @@ async function loadPage(index) {
 
 async function buildStage() {
   page.graphics = graphicsProfile();
-  const data = await (await download("art/flash.json")).json();
+  const data = await download(`${page.graphics.artBase}/flash.json`, "json");
   const lib = new Library(data, limitPageLoads(loadPage, page.graphics.pageLoads));
   page.lib = lib;
   // The Upgrades dial's ring (1605) shows the dial only inside the ring
@@ -304,7 +321,12 @@ function watchDrawing(app) {
     const graphics = gl?.isContextLost() ? "graphics lost" : "graphics ok";
     return `screen ${page.screen}, canvas ${canvas.width}x${canvas.height}, ${graphics}, battle paused ${field.paused}`;
   };
-  app.canvas.addEventListener("webglcontextlost", () => reportProblem(`graphics lost (${state()})`));
+  app.canvas.addEventListener("webglcontextlost", (event) => {
+    event.preventDefault();
+    reportProblem(`graphics lost (${state()})`);
+    page.recovery.pause();
+    page.recovery.show("graphics");
+  });
   app.canvas.addEventListener("webglcontextrestored", () => reportProblem(`graphics restored (${state()})`));
   let last = null;
   let stalled = false;
@@ -313,6 +335,8 @@ function watchDrawing(app) {
     const stopped = now === last && !document.hidden;
     if (stopped && !stalled) {
       reportProblem(`drawing stopped (${state()})`);
+      page.recovery.pause();
+      page.recovery.show("graphics");
     }
     stalled = stopped;
     last = now;
@@ -324,17 +348,20 @@ function watchDrawing(app) {
 // a sideways phone below it. The bars beside it or the ones above and below it are kept wide enough for the back
 // button, so it never covers the art
 function fit() {
+  if (!page.app) return;
   const box = $("stage").getBoundingClientRect();
-  const beside = Math.min((box.width - BACK_ROOM * 2) / STAGE_WIDTH, box.height / STAGE_HEIGHT);
-  const above = Math.min(box.width / STAGE_WIDTH, (box.height - BACK_ROOM * 2) / STAGE_HEIGHT);
+  const stageHeight = page.mobile?.active ? 353 : STAGE_HEIGHT;
+  const room = page.mobile?.active ? EDGE : BACK_ROOM;
+  const beside = Math.min((box.width - room * 2) / STAGE_WIDTH, box.height / stageHeight);
+  const above = Math.min(box.width / STAGE_WIDTH, (box.height - room * 2) / stageHeight);
   const scale = Math.max(0.05, beside, above);
   const width = Math.round(STAGE_WIDTH * scale);
-  const height = Math.round(STAGE_HEIGHT * scale);
+  const height = Math.round(stageHeight * scale);
   if (page.app.screen.width !== width || page.app.screen.height !== height) {
     page.app.renderer.resize(width, height);
   }
   page.app.stage.hitArea = page.app.screen;
-  page.world?.scale.set(width / STAGE_WIDTH, height / STAGE_HEIGHT);
+  page.world?.scale.set(width / STAGE_WIDTH, height / stageHeight);
   page.lib.filterScale = scale;
   // Words drawn from now on match the screen's pixels
   setTextResolution(scale * page.app.renderer.resolution);
@@ -348,7 +375,7 @@ function fit() {
 function placeTurnLine(box, stageHeight) {
   const line = $("turn");
   const upright = box.height > box.width;
-  line.hidden = !upright;
+  line.hidden = !upright || Boolean(page.mobile?.active);
   if (upright) {
     line.style.top = `${box.top + (box.height + stageHeight) / 2 + EDGE}px`;
     line.style.width = `${Math.min(box.width, STAGE_WIDTH) - EDGE * 2}px`;
@@ -544,39 +571,46 @@ async function show(name) {
   page.previousScreen = page.screen;
   page.screen = name;
   document.body.dataset.screen = name;
+  page.campaignFiles?.refresh();
   try {
     await next.enter(page);
   } catch (e) {
     console.error(`Warfare 1944: couldn't show ${name}`, e);
   }
   report();
+  page.mobile?.draw();
+}
+
+async function loadArt(ids) {
+  const needed = [...page.lib.pagesFor(ids)].some((index) => !page.lib.textures[index]);
+  if (!needed) return page.lib.need(ids);
+  return page.loading.run((progress) => page.lib.need(ids, progress));
 }
 
 // ---------- The live connection ----------
 
-async function goLive() {
-  try {
-    useConnection(await page.hub.socket());
-  } catch (e) {
-    closed(e.status);
-  }
-}
+let connectionAttempt = null;
+let reconnectTimer = null;
+const goLive = () => reconnect();
 
 function useConnection(conn) {
   page.conn = conn;
+  page.recovery.connected();
   for (const message of page.reports.waiting.splice(0)) {
     conn.send(message);
   }
   conn.on(receive);
-  conn.onReconnecting(() => toast(RECONNECTING, 0));
-  conn.onReconnected(hideToast);
-  conn.onClose(closed);
+  conn.onReconnecting(() => { toast(RECONNECTING, 0); page.recovery.show("connection"); });
+  conn.onReconnected(() => { hideToast(); page.recovery.connected(); });
+  conn.onClose((code) => { if (page.conn === conn) closed(code); });
 }
 
 // A connection gone for good: the page keeps trying for a new one, unless the bot can't take it back. After a few
 // failed tries the window is told the player is no longer connected, so a friend's Join stops asking first
 function closed(code) {
   page.conn = null;
+  clearTimeout(reconnectTimer);
+  page.field.cancelInput();
   if (CLOSED_BECAUSE[code]) {
     toast(CLOSED_BECAUSE[code], 0);
     leaveGame();
@@ -587,17 +621,23 @@ function closed(code) {
     leaveGame();
   }
   toast(RECONNECTING, 0);
-  setTimeout(reconnect, Math.min(RETRY_MS * page.failedTries, MOST_RETRY_MS));
+  page.recovery.show("connection");
+  reconnectTimer = setTimeout(reconnect, Math.min(RETRY_MS * page.failedTries, MOST_RETRY_MS));
 }
 
 async function reconnect() {
+  clearTimeout(reconnectTimer);
+  if (page.conn || connectionAttempt || !page.hub) return;
+  connectionAttempt = page.hub.socket();
   try {
-    const conn = await page.hub.socket();
+    const conn = await connectionAttempt;
     // The bot sends everything again to a new connection
     hideToast();
     useConnection(conn);
   } catch (e) {
     closed(e.status);
+  } finally {
+    connectionAttempt = null;
   }
 }
 
@@ -650,6 +690,7 @@ function receive(data) {
     }
   }
   report();
+  page.campaignFiles?.refresh();
 }
 
 // What the page keeps of the bot's word
@@ -849,7 +890,7 @@ const battleScreen = {
 };
 
 // What the screens built in other files use
-Object.assign(page, { send, launch, show, attach, detach, toast, hideToast, onMessage, registerScreen, find, report, field });
+Object.assign(page, { send, launch, show, loadArt, fit, attach, detach, toast, hideToast, onMessage, registerScreen, find, report, field });
 Object.assign(page, { dialog: menus.dialog, quickMessage: menus.quickMessage, savedIcon: menus.savedIcon, cutName });
 menus.bindPage(page);
 campaign.bindPage(page);

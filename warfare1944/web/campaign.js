@@ -319,7 +319,7 @@ function announce(save) {
 
 // displayUnlockDialog (F6:8652-8681) and unlockInterfaceButton (F6:8682-8702)
 async function showUnlock(side, key, onClosed) {
-  await page.lib.need([page.lib.exported("unlockDialog")]);
+  await page.loadArt([page.lib.exported("unlockDialog")]);
   unlockCount += 1;
   const dialog = page.attach("unlockDialog", DEPTH_UNLOCK_DIALOG + unlockCount, `unlockDialog${unlockCount}`);
   const [black, backing, icon, texts, button] = ["blackOut", "backing", "icon", "textBoxes", "mainButton"].map((name) =>
