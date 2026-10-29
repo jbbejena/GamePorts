@@ -9,6 +9,7 @@
 import { backToMenu, connect } from "activityhub";
 import { Application, Container, ImageSource, Rectangle, Texture } from "./vendor/pixi.min.mjs";
 import { Library, setTextResolution } from "./flash.js";
+import { atlasBitmap, graphicsProfile, limitPageLoads } from "./graphics.js";
 import * as campaign from "./campaign.js";
 import * as custom from "./custom.js";
 import { field } from "./field.js";
@@ -84,6 +85,7 @@ const page = {
   offline: false,
   app: null,
   lib: null,
+  graphics: null,
   // The stage at the original's size, and the original's root inside it
   world: null,
   root: null,
@@ -203,13 +205,20 @@ async function loadPage(index) {
   const blob = await (await download(`art/${page.lib.data.atlas.pages[index]}`)).blob();
   // Browsers don't premultiply a decoded bitmap's colors on upload, so it is decoded premultiplied, which is how
   // Pixi blends; the art's see-through panels would otherwise draw solid
-  const bitmap = await createImageBitmap(blob, { premultiplyAlpha: "premultiply" });
-  return new Texture({ source: new ImageSource({ resource: bitmap, alphaMode: "premultiplied-alpha" }) });
+  const bitmap = await atlasBitmap(blob, page.graphics.atlasSize);
+  return new Texture({ source: new ImageSource({
+    resource: bitmap,
+    alphaMode: "premultiplied-alpha",
+    // Keep the atlas frames and every Flash placement in their original units.
+    // Only the backing pixels shrink; buttons, masks and soldiers stay the same size.
+    resolution: page.graphics.atlasResolution,
+  }) });
 }
 
 async function buildStage() {
+  page.graphics = graphicsProfile();
   const data = await (await download("art/flash.json")).json();
-  const lib = new Library(data, loadPage);
+  const lib = new Library(data, limitPageLoads(loadPage, page.graphics.pageLoads));
   page.lib = lib;
   // The Upgrades dial's ring (1605) shows the dial only inside the ring
   lib.alphaMasks.add(1605);
@@ -224,9 +233,9 @@ async function buildStage() {
     width: STAGE_WIDTH,
     height: STAGE_HEIGHT,
     background: 0x000000,
-    antialias: true,
+    antialias: !page.graphics.compact,
     autoDensity: true,
-    resolution: Math.min(window.devicePixelRatio || 1, 2),
+    resolution: page.graphics.resolution,
     preference: "webgl",
     // The art's overlay blend draws from what is already on the screen
     useBackBuffer: true,
@@ -321,7 +330,9 @@ function fit() {
   const scale = Math.max(0.05, beside, above);
   const width = Math.round(STAGE_WIDTH * scale);
   const height = Math.round(STAGE_HEIGHT * scale);
-  page.app.renderer.resize(width, height);
+  if (page.app.screen.width !== width || page.app.screen.height !== height) {
+    page.app.renderer.resize(width, height);
+  }
   page.app.stage.hitArea = page.app.screen;
   page.world?.scale.set(width / STAGE_WIDTH, height / STAGE_HEIGHT);
   page.lib.filterScale = scale;

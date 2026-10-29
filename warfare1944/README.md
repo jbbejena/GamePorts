@@ -34,6 +34,8 @@ Render's free service sleeps after fifteen minutes without inbound traffic. Open
 
 Free-host server files can disappear on a sleep, restart or redeploy. The browser therefore keeps a campaign backup and sends it back **only when the server has no saved campaign**. Existing server progress is kept. Use the same browser and website address when returning, and keep its cookies and website data. Backups belong to that browser profile; they do not sync to another phone. An unfinished live battle starts again from its mission after the host restarts.
 
+Touch devices use 1024-pixel atlas sheets instead of the original 2048-pixel sheets, decoded one at a time. This reduces retained artwork pixels by 75% and avoids simultaneous full-size image decodes during campaign and mission loading. Artwork placements, button hit areas and gameplay coordinates keep their original size. Touch devices also use a 1x drawing buffer without multisample antialiasing to reduce GPU memory.
+
 ### Hosting configuration
 
 `render.yaml` installs `requirements-local.txt`, starts a single Python process on Render's `PORT`, and uses `/healthz` for health checks. The server detects `RENDER_EXTERNAL_URL` to accept the public HTTPS origin and secure cookies behind Render's TLS proxy. For a custom domain or another reverse-proxy host, set `WARFARE_PUBLIC_URL=https://your-domain.example` or pass `--public-url` with that origin.
@@ -87,9 +89,10 @@ From the repository root:
 
 ```sh
 python -m unittest discover -s warfare1944/tests -v
+node --test warfare1944/tests/test_graphics.mjs
 ```
 
-These checks cover startup, real WebSocket gameplay, campaign persistence, browser-backup recovery after a host loses its files, HTTPS proxy origins, separate player profiles, reconnects, and versus battles. The launcher needs only the dependency in `requirements-local.txt`.
+These checks cover startup, real WebSocket gameplay, campaign persistence, browser-backup recovery after a host loses its files, HTTPS proxy origins, separate player profiles, reconnects, versus battles, and the graphics loader's concurrency and retry behavior. Node is needed only for the graphics checks; the launcher needs only the dependency in `requirements-local.txt`.
 
 ## Discord setup
 
